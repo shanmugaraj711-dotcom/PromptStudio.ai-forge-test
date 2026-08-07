@@ -8,29 +8,20 @@ import ForgotPassword from "./pages/Auth/ForgotPassword";
 
 import Dashboard from "./pages/Dashboard/Dashboard";
 import Account from "./pages/Account/Account";
-import Builder from "./pages/Builder/Builder";
+import PromptBuilder from "./pages/Builder/PromptBuilder";
 
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export default function App() {
   return (
     <Routes>
-
       {/* Public Routes */}
-
       <Route path="/" element={<Landing />} />
-
       <Route path="/login" element={<Login />} />
-
       <Route path="/signup" element={<Signup />} />
-
-      <Route
-        path="/forgot-password"
-        element={<ForgotPassword />}
-      />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* Protected Routes */}
-
       <Route
         path="/dashboard"
         element={
@@ -44,7 +35,7 @@ export default function App() {
         path="/builder"
         element={
           <ProtectedRoute>
-            <Builder />
+            <PromptBuilder />
           </ProtectedRoute>
         }
       />
@@ -58,13 +49,8 @@ export default function App() {
         }
       />
 
-      {/* Unknown Routes */}
-
-      <Route
-        path="*"
-        element={<Navigate to="/" replace />}
-      />
-
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
