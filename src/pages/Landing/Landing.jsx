@@ -1,0 +1,27 @@
+import Navbar from '../../components/layout/Navbar';
+import Footer from '../../components/layout/Footer';
+import Hero from './Hero';
+import HowItWorks from './HowItWorks';
+import Features from './Features';
+import WorksWith from './WorksWith';
+import PromptBuilder from '../Builder/PromptBuilder';
+import BeforeAfter from '../Builder/BeforeAfter';
+import Pricing from './Pricing';
+
+function Landing() {
+  return (
+    <div className="min-h-screen bg-white">
+      <Navbar />
+      <Hero />
+      <HowItWorks />
+      <Features />
+      <WorksWith />
+      <PromptBuilder />
+      <BeforeAfter />
+      <Pricing />
+      <Footer />
+    </div>
+  );
+}
+
+export default Landing;

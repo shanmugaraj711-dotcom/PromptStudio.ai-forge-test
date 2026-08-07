@@ -1,0 +1,35 @@
+export const PRICING_PLANS = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: '₹0',
+    period: 'forever',
+    description: 'Perfect for trying out PromptStudio AI.',
+    features: [
+      '3 Prompt Generations per Day',
+      'Works with ChatGPT',
+      'Works with Claude',
+      'Works with Gemini',
+      'Copy Generated Prompt',
+    ],
+    cta: 'Start Free',
+    highlighted: false,
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '₹49',
+    period: 'per month',
+    description: 'For creators and professionals who use AI daily.',
+    features: [
+      'Unlimited Prompt Generations',
+      'Optimized for ChatGPT',
+      'Optimized for Claude',
+      'Optimized for Gemini',
+      'Priority Improvements',
+      'Future Premium Features',
+    ],
+    cta: 'Upgrade to Pro',
+    highlighted: true,
+  },
+];
