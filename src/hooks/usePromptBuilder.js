@@ -1,82 +1,62 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState, useCallback } from "react";
+import { generatePrompt } from "../services/promptGenerator";
 import { useAuth } from "../context/AuthContext";
-import {
-  getPromptHistory,
-  savePrompt,
-  deletePrompt
-} from "../services/promptHistoryService";
+import { savePrompt } from "../services/promptHistoryService";
 
-export const usePromptHistory = () => {
+export function usePromptBuilder() {
   const { user } = useAuth();
 
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [idea, setIdea] = useState("");
+  const [aiModel, setAiModel] = useState("chatgpt");
+  const [category, setCategory] = useState("writing");
+  const [generatedPrompt, setGeneratedPrompt] = useState("");
+  const [error, setError] = useState("");
 
-  const loadHistory = useCallback(async () => {
-    if (!user) {
-      setHistory([]);
+  const generate = useCallback(async () => {
+    if (!idea.trim()) {
+      setError("Please describe what you want AI to create.");
+      setGeneratedPrompt("");
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const prompts = await getPromptHistory(user.uid);
-      setHistory(prompts);
-    } catch (err) {
-      console.error("Failed to load prompt history:", err);
-      setError("Unable to load prompt history.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
-
-  const addPrompt = async (promptData) => {
     if (!user) {
-      throw new Error("You must be logged in.");
+      setError("You must be logged in to generate and save prompts.");
+      return;
     }
+
+    setError("");
 
     try {
-      const id = await savePrompt(user.uid, promptData);
+      const prompt = generatePrompt({ idea, aiModel, category });
+      setGeneratedPrompt(prompt);
 
-      await loadHistory();
-
-      return id;
+      await savePrompt(user.uid, {
+        prompt,
+        aiModel,
+        category,
+      });
     } catch (err) {
-      console.error("Failed to save prompt:", err);
-      throw err;
+      console.error("Failed to generate or save prompt:", err);
+      setError("Unable to save your prompt. Please try again.");
     }
-  };
+  }, [idea, aiModel, category, user]);
 
-  const removePrompt = async (promptId) => {
-    if (!user) {
-      throw new Error("You must be logged in.");
-    }
-
-    try {
-      await deletePrompt(user.uid, promptId);
-
-      setHistory((current) =>
-        current.filter((item) => item.id !== promptId)
-      );
-    } catch (err) {
-      console.error("Failed to delete prompt:", err);
-      throw err;
-    }
-  };
+  const reset = useCallback(() => {
+    setIdea("");
+    setGeneratedPrompt("");
+    setError("");
+  }, []);
 
   return {
-    history,
-    loading,
+    idea,
+    setIdea,
+    aiModel,
+    setAiModel,
+    category,
+    setCategory,
+    generatedPrompt,
     error,
-    addPrompt,
-    removePrompt,
-    refreshHistory: loadHistory
+    generate,
+    reset,
   };
-};
+}
