@@ -45,12 +45,17 @@ const createOrUpdateUserDoc = async (user, name = null) => {
 };
 
 export const registerWithEmail = async (email, password, name) => {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(userCredential.user, {
-    displayName: name
-  });
-  await createOrUpdateUserDoc(userCredential.user, name);
-  return userCredential.user;
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(userCredential.user, {
+      displayName: name
+    });
+    await createOrUpdateUserDoc(userCredential.user, name);
+    return userCredential.user;
+  } catch (error) {
+    console.error("REGISTER FIREBASE ERROR:", error);
+    throw error;
+  }
 };
 
 export const loginWithEmail = async (email, password) => {
@@ -60,9 +65,14 @@ export const loginWithEmail = async (email, password) => {
 };
 
 export const loginWithGoogle = async () => {
-  const userCredential = await signInWithPopup(auth, googleProvider);
-  await createOrUpdateUserDoc(userCredential.user);
-  return userCredential.user;
+  try {
+    const userCredential = await signInWithPopup(auth, googleProvider);
+    await createOrUpdateUserDoc(userCredential.user);
+    return userCredential.user;
+  } catch (error) {
+    console.error("GOOGLE FIREBASE ERROR:", error);
+    throw error;
+  }
 };
 
 export const logout = async () => {
