@@ -11,6 +11,7 @@ import Account from "./pages/Account/Account";
 import PromptBuilder from "./pages/Builder/PromptBuilder";
 
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import PromptHistory from "./pages/Result/PromptHistory";
 
 export default function App() {
   return (
@@ -48,6 +49,14 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+  path="/history"
+  element={
+    <ProtectedRoute>
+      <PromptHistory />
+    </ProtectedRoute>
+  }
+/>
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
