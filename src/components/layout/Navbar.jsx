@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
 
 const navLinks = [
@@ -25,16 +26,13 @@ function Navbar() {
           : 'bg-white border-b border-transparent'
       }`}
     >
-      <nav
-        className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8"
-        aria-label="Main navigation"
-      >
-        <a href="#" className="flex items-center gap-2">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+        <Link to="/" className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-sm">
             P
           </span>
           <span className="text-lg font-bold text-gray-900">PromptStudio AI</span>
-        </a>
+        </Link>
 
         <div className="hidden md:flex md:items-center md:gap-10">
           {navLinks.map((link) => (
@@ -49,9 +47,11 @@ function Navbar() {
         </div>
 
         <div className="hidden md:block">
-          <Button variant="primary" size="md">
-            Start Free
-          </Button>
+          <Link to="/signup">
+            <Button variant="primary" size="md">
+              Start Free
+            </Button>
+          </Link>
         </div>
 
         <button
@@ -63,19 +63,9 @@ function Navbar() {
         >
           <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             {isMenuOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+              <path strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
+              <path strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             )}
           </svg>
         </button>
@@ -94,9 +84,15 @@ function Navbar() {
                 {link.label}
               </a>
             ))}
-            <Button variant="primary" size="md" className="w-full mt-2">
-              Start Free
-            </Button>
+
+            <Link
+              to="/signup"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <Button variant="primary" size="md" className="w-full mt-2">
+                Start Free
+              </Button>
+            </Link>
           </div>
         </div>
       )}
