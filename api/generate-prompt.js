@@ -52,84 +52,24 @@ const getAdminApp = () => {
     return getApps()[0];
   }
 
-  const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-
-  if (rawServiceAccount?.trim()) {
-    try {
-      let raw = rawServiceAccount.trim();
-
-      // Handle accidental wrapping quotes.
-      if (
-        (raw.startsWith('"') && raw.endsWith('"')) ||
-        (raw.startsWith("'") && raw.endsWith("'"))
-      ) {
-        raw = raw.slice(1, -1).trim();
-      }
-
-      const serviceAccount = JSON.parse(raw);
-
-      if (
-        !serviceAccount.project_id ||
-        !serviceAccount.client_email ||
-        !serviceAccount.private_key
-      ) {
-        throw new Error("Incomplete Firebase service account");
-      }
-
-      // Vercel environment variables commonly contain escaped newlines.
-      serviceAccount.private_key = serviceAccount.private_key.replace(
-        /\\n/g,
-        "\n"
-      );
-
-      return initializeApp({
-        credential: cert(serviceAccount),
-        projectId: serviceAccount.project_id,
-      });
-    } catch (error) {
-      console.error(
-        "Firebase service account configuration is invalid."
-      );
-
-      throw new ApiError(
-        503,
-        "firebase_configuration_error",
-        "Firebase server configuration is invalid."
-      );
-    }
-  }
-
-  // Backward-compatible individual environment variables.
   const projectId =
-    process.env.FIREBASE_ADMIN_PROJECT_ID ||
-    process.env.GOOGLE_CLOUD_PROJECT;
-
+    process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-
-  const privateKey =
-    process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
   if (!projectId || !clientEmail || !privateKey) {
-    console.error(
-      "Firebase Admin credentials are missing from the server environment."
-    );
-
     throw new ApiError(
       503,
-      "firebase_configuration_error",
-      "Firebase server configuration is missing."
+      "server_configuration_error",
+      "The generation service is not configured yet. Please try again later."
     );
   }
 
   return initializeApp({
-    credential: cert({
-      projectId,
-      clientEmail,
-      privateKey,
-    }),
+    credential: cert({ projectId, clientEmail, privateKey }),
     projectId,
   });
-};;
+};
 
 const getServices = () => {
   const app = getAdminApp();
