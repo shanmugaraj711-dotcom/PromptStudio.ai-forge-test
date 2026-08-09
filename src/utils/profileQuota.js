@@ -1,6 +1,6 @@
 import { createQuotaState } from "../constants/quota";
 
-export const quotaFromProfile = (profile) => createQuotaState(profile);
+export const quotaFromProfile = (profile) => createQuotaState(profile || {});
 
 export const mergeProfileWithQuota = (profile, quota) => ({
   ...(profile || {}),
