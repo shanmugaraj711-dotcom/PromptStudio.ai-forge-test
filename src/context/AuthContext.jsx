@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../firebase";
@@ -10,6 +17,11 @@ import {
   resetPassword,
   getUserProfile,
 } from "../services/authService";
+import {
+  isQuotaAtLeastAsNew,
+  mergeProfileWithQuota,
+  quotaFromProfile,
+} from "../utils/profileQuota";
 
 const AuthContext = createContext(null);
 
@@ -27,50 +39,95 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const latestQuotaRef = useRef({ quotaVersion: -1 });
+
+  const updateQuotaState = useCallback((quota) => {
+    if (!quota) return;
+
+    const nextQuota = quotaFromProfile(quota);
+    const latestQuota = latestQuotaRef.current;
+
+    if (!isQuotaAtLeastAsNew(nextQuota, latestQuota)) {
+      return;
+    }
+
+    latestQuotaRef.current = nextQuota;
+    setUserProfile((profile) => mergeProfileWithQuota(profile, nextQuota));
+  }, []);
 
   useEffect(() => {
-    let unsubscribeProfile = null;
+    let active = true;
+    let unsubscribeProfile = () => {};
+
+    const stopProfileListener = () => {
+      unsubscribeProfile();
+      unsubscribeProfile = () => {};
+    };
 
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      stopProfileListener();
       setUser(currentUser);
+      latestQuotaRef.current = { quotaVersion: -1 };
 
       if (!currentUser) {
         setUserProfile(null);
         setLoading(false);
-
-        if (unsubscribeProfile) {
-          unsubscribeProfile();
-        }
-
         return;
       }
 
+      setUserProfile(null);
+      setLoading(true);
+      const uid = currentUser.uid;
+
       unsubscribeProfile = onSnapshot(
-        doc(db, "users", currentUser.uid),
+        doc(db, "users", uid),
         (snapshot) => {
-          setUserProfile(snapshot.exists() ? snapshot.data() : null);
+          if (!active || auth.currentUser?.uid !== uid) return;
+
+          const profile = snapshot.exists() ? snapshot.data() : null;
+
+          if (!profile) {
+            setUserProfile(null);
+            setLoading(false);
+            return;
+          }
+
+          const snapshotQuota = quotaFromProfile(profile);
+          const latestQuota = latestQuotaRef.current;
+
+          if (isQuotaAtLeastAsNew(snapshotQuota, latestQuota)) {
+            latestQuotaRef.current = snapshotQuota;
+            setUserProfile(profile);
+          } else {
+            setUserProfile(mergeProfileWithQuota(profile, latestQuota));
+          }
+
           setLoading(false);
         },
         (error) => {
-          console.error(error);
+          console.error("Unable to load the user profile:", error);
           setLoading(false);
         }
       );
     });
 
     return () => {
+      active = false;
       unsubscribeAuth();
-
-      if (unsubscribeProfile) {
-        unsubscribeProfile();
-      }
+      stopProfileListener();
     };
   }, []);
+
+  const quota = quotaFromProfile(userProfile);
 
   const value = {
     user,
     userProfile,
+    plan: quota.plan,
+    promptsToday: quota.promptsToday,
+    lastPromptDate: quota.lastPromptDate,
     loading,
+    updateQuotaState,
 
     signup: registerWithEmail,
     login: loginWithEmail,
@@ -82,7 +139,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

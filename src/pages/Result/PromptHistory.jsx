@@ -1,4 +1,5 @@
 import React from "react";
+import { useState } from "react";
 import { usePromptHistory } from "../../hooks/usePromptHistory";
 
 export default function PromptHistory() {
@@ -8,12 +9,19 @@ export default function PromptHistory() {
     error,
     removePrompt
   } = usePromptHistory();
+  const [deletingId, setDeletingId] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const handleDelete = async (id) => {
+    setActionError("");
+    setDeletingId(id);
     try {
       await removePrompt(id);
     } catch (err) {
-      console.error(err);
+      console.error("Unable to delete prompt history item:", err);
+      setActionError("Unable to delete that prompt. Please try again.");
+    } finally {
+      setDeletingId("");
     }
   };
 
@@ -38,9 +46,9 @@ export default function PromptHistory() {
           </p>
         </div>
 
-        {error && (
+        {(error || actionError) && (
           <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-600">
-            {error}
+            {actionError || error}
           </div>
         )}
 
@@ -81,9 +89,10 @@ export default function PromptHistory() {
                   <button
                     type="button"
                     onClick={() => handleDelete(item.id)}
+                    disabled={deletingId === item.id}
                     className="rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                   >
-                    Delete
+                    {deletingId === item.id ? "Deleting…" : "Delete"}
                   </button>
                 </div>
               </div>

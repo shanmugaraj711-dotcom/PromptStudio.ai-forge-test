@@ -4,13 +4,15 @@ import Button from '../../components/ui/Button';
 import { copyToClipboard } from '../../utils/copyToClipboard';
 
 function ResultCard({ prompt }) {
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState('');
 
   const handleCopy = async () => {
     const success = await copyToClipboard(prompt);
     if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopyStatus('Copied to clipboard');
+      setTimeout(() => setCopyStatus(''), 2000);
+    } else {
+      setCopyStatus('Copy failed. Select the prompt and copy it manually.');
     }
   };
 
@@ -27,9 +29,15 @@ function ResultCard({ prompt }) {
               d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
             />
           </svg>
-          {copied ? 'Copied!' : 'Copy Prompt'}
+          {copyStatus === 'Copied to clipboard' ? 'Copied!' : 'Copy Prompt'}
         </Button>
       </div>
+
+      {copyStatus && (
+        <p className="mt-3 text-sm text-gray-600" role="status">
+          {copyStatus}
+        </p>
+      )}
 
       <div className="mt-6">
         <TextArea id="generatedPrompt" value={prompt} readOnly rows={12} />

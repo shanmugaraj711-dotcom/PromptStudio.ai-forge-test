@@ -6,6 +6,8 @@ import ResultCard from '../Result/ResultCard';
 import { usePromptBuilder } from '../../hooks/usePromptBuilder';
 import { AI_MODELS } from '../../constants/aiModels';
 import { CATEGORIES } from '../../constants/categories';
+import { createQuotaState } from '../../constants/quota';
+import { useAuth } from '../../context/AuthContext';
 
 function PromptBuilder() {
   const {
@@ -17,8 +19,17 @@ function PromptBuilder() {
     setCategory,
     generatedPrompt,
     error,
+    isGenerating,
     generate,
   } = usePromptBuilder();
+  const { plan, promptsToday, lastPromptDate } = useAuth();
+  const quota = createQuotaState({ plan, promptsToday, lastPromptDate });
+  const quotaExhausted = quota.remaining === 0;
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    generate();
+  };
 
   return (
     <section id="prompt-builder" className="bg-gray-50/60 py-20 lg:py-28">
@@ -29,7 +40,11 @@ function PromptBuilder() {
           subtitle="Describe your idea and let PromptStudio do the rest."
         />
 
-        <div className="mt-14 rounded-3xl border border-gray-100 bg-white p-8 shadow-sm sm:p-10">
+        <form
+          className="mt-14 rounded-3xl border border-gray-100 bg-white p-8 shadow-sm sm:p-10"
+          onSubmit={handleSubmit}
+          aria-busy={isGenerating}
+        >
           <TextArea
             id="idea"
             label="Your idea"
@@ -38,6 +53,7 @@ function PromptBuilder() {
             placeholder="What do you want AI to create?"
             rows={6}
             error={error}
+            disabled={isGenerating}
           />
 
           <div className="mt-6 rounded-xl bg-blue-50 p-4 border border-blue-100">
@@ -55,6 +71,7 @@ function PromptBuilder() {
               value={aiModel}
               onChange={(e) => setAiModel(e.target.value)}
               options={AI_MODELS}
+              disabled={isGenerating}
             />
             <Select
               id="category"
@@ -62,15 +79,32 @@ function PromptBuilder() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               options={CATEGORIES}
+              disabled={isGenerating}
             />
           </div>
 
-          <div className="mt-8">
-            <Button variant="primary" size="lg" onClick={generate} className="w-full sm:w-auto">
-              Generate Better Prompt
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              variant="primary"
+              size="lg"
+              type="submit"
+              disabled={isGenerating || quotaExhausted}
+              className="w-full sm:w-auto"
+            >
+              {isGenerating ? 'Generating your prompt…' : 'Generate Better Prompt'}
             </Button>
+            <p
+              className={`text-sm font-semibold ${
+                quotaExhausted ? 'text-red-600' : 'text-gray-600'
+              }`}
+              aria-live="polite"
+            >
+              {quota.remaining === null
+                ? 'Unlimited prompts available'
+                : `${quota.remaining} / ${quota.dailyLimit} prompts remaining today`}
+            </p>
           </div>
-        </div>
+        </form>
 
         {generatedPrompt && (
           <div className="mt-10">

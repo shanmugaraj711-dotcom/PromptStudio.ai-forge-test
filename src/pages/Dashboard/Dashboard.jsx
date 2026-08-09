@@ -1,9 +1,10 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { createQuotaState } from "../../constants/quota";
 
 export const Dashboard = () => {
-  const { user, userProfile, logout } = useAuth();
+  const { user, userProfile, logout, plan, promptsToday, lastPromptDate } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -17,8 +18,8 @@ export const Dashboard = () => {
 
   const displayName = userProfile?.name || user?.displayName || "Creator";
   const userEmail = userProfile?.email || user?.email || "N/A";
-  const currentPlan = userProfile?.plan || "free";
-  const promptsToday = userProfile?.promptsToday ?? 0;
+  const currentPlan = plan;
+  const quota = createQuotaState({ plan, promptsToday, lastPromptDate });
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
@@ -106,12 +107,14 @@ export const Dashboard = () => {
             </div>
             <div className="mt-4">
               <div className="text-2xl font-extrabold text-white">
-                {promptsToday} {currentPlan === "free" ? "/ 5" : " Prompts"}
+                {quota.remaining === null
+                  ? "Unlimited prompts"
+                  : `${quota.remaining} / ${quota.dailyLimit} remaining`}
               </div>
               <p className="mt-1 text-xs text-gray-400">
-                {currentPlan === "free" && promptsToday >= 5
+                {quota.remaining === 0
                   ? "Daily free limit reached"
-                  : "Resets every 24 hours"}
+                  : "Resets daily at midnight UTC"}
               </p>
             </div>
           </div>
@@ -165,27 +168,25 @@ export const Dashboard = () => {
             </Link>
 
             {/* Action 2: History */}
-            <div className="group bg-gray-900 border border-gray-800 opacity-75 rounded-xl p-6 shadow-xl flex flex-col justify-between">
+            <Link
+              to="/history"
+              className="group bg-gray-900 border border-gray-800 hover:border-indigo-500/60 rounded-xl p-6 shadow-xl transition-all duration-200 hover:-translate-y-0.5 flex flex-col justify-between"
+            >
               <div>
-                <div className="w-10 h-10 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-400 font-bold mb-4">
+                <div className="w-10 h-10 rounded-lg bg-indigo-950/80 border border-indigo-800 flex items-center justify-center text-indigo-400 font-bold mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                   📜
                 </div>
-                <div className="flex items-center space-x-2">
-                  <h3 className="text-base font-semibold text-white">
-                    History
-                  </h3>
-                  <span className="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded border border-gray-700">
-                    Coming Soon
-                  </span>
-                </div>
+                <h3 className="text-base font-semibold text-white group-hover:text-indigo-300 transition-colors">
+                  History
+                </h3>
                 <p className="mt-1 text-xs text-gray-400">
                   View and manage your previously generated prompt templates.
                 </p>
               </div>
-              <span className="mt-4 text-xs font-semibold text-gray-500">
-                Unavailable
+              <span className="mt-4 text-xs font-semibold text-indigo-400 flex items-center">
+                View history &rarr;
               </span>
-            </div>
+            </Link>
 
             {/* Action 3: Account */}
             <Link

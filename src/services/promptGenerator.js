@@ -1,46 +1,58 @@
-const MODEL_LABELS = {
-  chatgpt: 'ChatGPT',
-  claude: 'Claude',
-  gemini: 'Gemini',
-  grok: 'Grok',
-};
+export class PromptGenerationError extends Error {
+  constructor(message, { code, quota } = {}) {
+    super(message);
+    this.name = "PromptGenerationError";
+    this.code = code;
+    this.quota = quota;
+  }
+}
 
-const CATEGORY_ROLE = {
-  writing: 'professional writer and editor',
-  coding: 'senior software engineer',
-  image: 'expert AI image prompt designer',
-  marketing: 'senior marketing strategist',
-  business: 'experienced business consultant',
-};
+export async function generatePrompt({
+  idea,
+  aiModel,
+  category,
+  idToken,
+  requestId,
+  fetchImpl = fetch,
+}) {
+  if (!idToken) {
+    throw new PromptGenerationError("Your session has expired. Please sign in again.", {
+      code: "unauthenticated",
+    });
+  }
 
-/**
- * Generates a structured, professional prompt from a simple user idea.
- * Sections: Role, Objective, Context, Requirements, Output Format, Quality Check.
- */
-export function generatePrompt({ idea, aiModel, category }) {
-  const modelLabel = MODEL_LABELS[aiModel] || 'AI Assistant';
-  const role = CATEGORY_ROLE[category] || 'expert';
+  let response;
 
-  return `# ROLE
-Act as a world-class ${role} using ${modelLabel}.
+  try {
+    response = await fetchImpl("/api/generate-prompt", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ idea, aiModel, category, requestId }),
+    });
+  } catch {
+    throw new PromptGenerationError(
+      "We could not reach the generation service. Please check your connection and try again.",
+      { code: "network_error" }
+    );
+  }
 
-# OBJECTIVE
-${idea}
+  const payload = await response.json().catch(() => ({}));
 
-# CONTEXT
-The user wants the highest possible quality output.
-Think step-by-step before answering.
+  if (!response.ok) {
+    throw new PromptGenerationError(
+      payload.message || "Unable to generate a prompt right now. Please try again.",
+      { code: payload.code, quota: payload.quota }
+    );
+  }
 
-# REQUIREMENTS
-- Be accurate.
-- Be practical.
-- Avoid generic answers.
-- Use professional formatting.
-- Ask for clarification only if absolutely required.
+  if (!payload.prompt || !payload.quota) {
+    throw new PromptGenerationError("The generation service returned an invalid response.", {
+      code: "invalid_response",
+    });
+  }
 
-# OUTPUT FORMAT
-Return the final answer using headings, bullet points and examples where useful.
-
-# QUALITY CHECK
-Before responding, verify that your answer fully satisfies the objective.`;
+  return payload;
 }

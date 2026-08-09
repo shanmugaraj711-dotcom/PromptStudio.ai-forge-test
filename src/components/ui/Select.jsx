@@ -1,4 +1,4 @@
-function Select({ label, value, onChange, options, id }) {
+function Select({ label, value, onChange, options, id, disabled = false }) {
   return (
     <div className="flex flex-col gap-2">
       {label && (
@@ -11,7 +11,8 @@ function Select({ label, value, onChange, options, id }) {
           id={id}
           value={value}
           onChange={onChange}
-          className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-colors"
+          disabled={disabled}
+          className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {options.map((option) => (
             <option key={option.id} value={option.id}>

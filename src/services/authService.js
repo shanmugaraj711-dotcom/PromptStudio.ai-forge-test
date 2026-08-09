@@ -32,8 +32,6 @@ const createOrUpdateUserDoc = async (user, name = null) => {
       name: displayName,
       email: user.email,
       photoURL,
-      plan: "free",
-      promptsToday: 0,
       createdAt: serverTimestamp(),
       lastLogin: serverTimestamp()
     });

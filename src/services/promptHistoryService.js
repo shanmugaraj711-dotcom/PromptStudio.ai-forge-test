@@ -1,34 +1,15 @@
 import {
   collection,
-  addDoc,
-  getDocs,
   deleteDoc,
   doc,
+  onSnapshot,
   query,
-  orderBy,
-  serverTimestamp
+  orderBy
 } from "firebase/firestore";
 
 import { db } from "../firebase";
 
-export const savePrompt = async (uid, promptData) => {
-  if (!uid) {
-    throw new Error("User not authenticated");
-  }
-
-  const promptsRef = collection(db, "users", uid, "prompts");
-
-  const docRef = await addDoc(promptsRef, {
-    prompt: promptData.prompt,
-    aiModel: promptData.aiModel || "Gemini",
-    category: promptData.category || "General",
-    createdAt: serverTimestamp()
-  });
-
-  return docRef.id;
-};
-
-export const getPromptHistory = async (uid) => {
+export const subscribeToPromptHistory = (uid, onChange, onError) => {
   if (!uid) {
     throw new Error("User not authenticated");
   }
@@ -40,12 +21,18 @@ export const getPromptHistory = async (uid) => {
     orderBy("createdAt", "desc")
   );
 
-  const snapshot = await getDocs(q);
-
-  return snapshot.docs.map((item) => ({
-    id: item.id,
-    ...item.data()
-  }));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      onChange(
+        snapshot.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        }))
+      );
+    },
+    onError
+  );
 };
 
 export const deletePrompt = async (uid, promptId) => {

@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { createQuotaState } from "../../constants/quota";
 
 export const Account = () => {
-  const { user, userProfile, logout } = useAuth();
+  const { user, userProfile, logout, plan, promptsToday, lastPromptDate } = useAuth();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [error, setError] = useState("");
@@ -30,8 +31,8 @@ export const Account = () => {
       displayName
     )}&background=4F46E5&color=fff`;
 
-  const currentPlan = userProfile?.plan || "free";
-  const promptsToday = userProfile?.promptsToday ?? 0;
+  const currentPlan = plan;
+  const quota = createQuotaState({ plan, promptsToday, lastPromptDate });
 
   const formatDate = (timestamp) => {
     if (!timestamp) return "N/A";
@@ -104,7 +105,9 @@ export const Account = () => {
               </span>
               <div className="mt-2">
                 <span className="text-lg font-bold text-white">
-                  {promptsToday} {currentPlan === "free" ? "/ 5" : "Prompts"}
+                  {quota.remaining === null
+                    ? "Unlimited prompts"
+                    : `${quota.remaining} / ${quota.dailyLimit} remaining`}
                 </span>
               </div>
             </div>
