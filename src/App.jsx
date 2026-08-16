@@ -13,6 +13,7 @@ import Admin from "./pages/Admin/Admin";
 import About from "./pages/About/About";
 import Help from "./pages/Help/Help";
 import Feedback from "./pages/Feedback/Feedback";
+import Contact from "./pages/Contact/Contact";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import PromptHistory from "./pages/Result/PromptHistory";
 import AppLayout from "./components/layout/AppLayout";
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/p/:id" element={<SharedPrompt />} />
         <Route path="/about" element={<About />} />
         <Route path="/help" element={<Help />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/feedback" element={<Feedback />} />
 
         <Route path="/dashboard" element={withAppLayout(<Dashboard />)} />
