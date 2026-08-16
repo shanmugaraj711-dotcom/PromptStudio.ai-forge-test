@@ -24,7 +24,7 @@ export const PRODUCT_CONFIG = Object.freeze({
     advancedOperation: 3,
     heavyOperation: 5,
   }),
-  monetization: Object.freeze({ purchasedCreditsExpire: false, paymentProvider: 'razorpay', paymentMode: 'test' }),
+  monetization: Object.freeze({ purchasedCreditsExpire: false, paymentProvider: 'razorpay', paymentMode: 'live' }),
   features: Object.freeze({
     aiPromptOptimization: { id: 'aiPromptOptimization', name: 'AI Prompt Optimization', phase: 'core', enabled: true, plans: ['free', 'pro'] },
     multiPerspectiveGeneration: { id: 'multiPerspectiveGeneration', name: 'Multi-Perspective Generation', phase: 'core', enabled: true, plans: ['free', 'pro'] },
