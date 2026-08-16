@@ -6,6 +6,7 @@ const navItems = [
   { to: "/builder", label: "🪄 Builder" },
   { to: "/history", label: "📜 History" },
   { to: "/account", label: "⚙️ Account" },
+  { to: "/help", label: "❓ Help" },
 ];
 
 export default function AppLayout({ children }) {
@@ -54,6 +55,7 @@ export default function AppLayout({ children }) {
                 {item.label}
               </NavLink>
             ))}
+            <Link to="/about" className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-950">About</Link>
           </nav>
 
           <div className="ml-auto flex items-center gap-2.5">
@@ -91,6 +93,7 @@ export default function AppLayout({ children }) {
                 {item.label}
               </NavLink>
             ))}
+            <Link to="/about" className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100">About</Link>
             <button
               type="button"
               onClick={handleLogout}
