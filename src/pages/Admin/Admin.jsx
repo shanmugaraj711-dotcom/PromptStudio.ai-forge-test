@@ -26,6 +26,9 @@ export default function Admin() {
   const [health, setHealth] = useState(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthError, setHealthError] = useState("");
+  const [inbox, setInbox] = useState({ support: [], feedback: [] });
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [inboxError, setInboxError] = useState("");
 
   const refreshClaim = useCallback(async (forceRefresh = true) => {
     if (!auth.currentUser) return null;
@@ -71,13 +74,32 @@ export default function Admin() {
     }
   }, []);
 
+  const loadInbox = useCallback(async () => {
+    setInboxLoading(true);
+    setInboxError("");
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch("/api/admin-inbox", { headers: { Authorization: `Bearer ${token}` } });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.message || "Could not load inbox.");
+      setInbox({ support: body.support || [], feedback: body.feedback || [] });
+    } catch (error) {
+      setInboxError(error.message || "Could not load inbox.");
+    } finally {
+      setInboxLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!loading && user) refreshClaim(true).catch(() => setCheckingClaim(false));
   }, [loading, user, refreshClaim]);
 
   useEffect(() => {
-    if (adminClaim === true) runHealthCheck();
-  }, [adminClaim, runHealthCheck]);
+    if (adminClaim === true) {
+      runHealthCheck();
+      loadInbox();
+    }
+  }, [adminClaim, runHealthCheck, loadInbox]);
 
   if (!loading && !user) return <Navigate to="/login?next=/admin" replace />;
   if (loading || checkingClaim) return <div className="min-h-screen bg-slate-950 p-10 text-white">Checking founder access…</div>;
@@ -109,7 +131,7 @@ export default function Admin() {
             <h1 className="mt-2 text-4xl font-black">Control Room</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-400">Private operational view for backend health, payments configuration, product limits and your current founder account.</p>
           </div>
-          <div className="flex gap-2"><Link to="/dashboard" className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold hover:bg-slate-900">Dashboard</Link><button onClick={runHealthCheck} disabled={healthLoading} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold hover:bg-indigo-500 disabled:opacity-50">{healthLoading ? "Checking…" : "Run Health Check"}</button></div>
+          <div className="flex gap-2"><Link to="/dashboard" className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold hover:bg-slate-900">Dashboard</Link><button onClick={() => { runHealthCheck(); loadInbox(); }} disabled={healthLoading || inboxLoading} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold hover:bg-indigo-500 disabled:opacity-50">{healthLoading || inboxLoading ? "Checking…" : "Refresh Health & Inbox"}</button></div>
         </div>
 
         <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-6">
@@ -125,6 +147,15 @@ export default function Admin() {
         <section className="mt-6 grid gap-6 lg:grid-cols-2">
           <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6"><p className="text-sm font-bold text-slate-200">Founder account</p><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between gap-4"><span className="text-slate-500">Email</span><span>{user.email}</span></div><div className="flex justify-between gap-4"><span className="text-slate-500">Plan</span><span>{userProfile?.plan || "unknown"}</span></div><div className="flex justify-between gap-4"><span className="text-slate-500">Credits</span><span>{Number(userProfile?.credits || 0)}</span></div><div className="flex justify-between gap-4"><span className="text-slate-500">Admin claim</span><span className="text-emerald-300">admin = true</span></div></div></div>
           <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6"><p className="text-sm font-bold text-slate-200">Product configuration</p>{health?.plans && <div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-800 p-4"><p className="text-xs text-slate-500">Free</p><p className="mt-1 text-lg font-black">{health.plans.free.dailyPromptLimit}/day</p><p className="text-xs text-slate-500">{health.plans.free.dailyImageLimit} image/day</p></div><div className="rounded-xl bg-slate-800 p-4"><p className="text-xs text-slate-500">Pro</p><p className="mt-1 text-lg font-black">{health.plans.pro.dailyPromptLimit}/day</p><p className="text-xs text-slate-500">{health.plans.pro.monthlyImageLimit} images/month</p></div></div>}</div>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-bold text-slate-200">Customer inbox</p><p className="mt-1 text-xs text-slate-500">Messages sent from Help & Chat and product feedback.</p></div><span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-bold text-slate-300">{inbox.support.length + inbox.feedback.length} recent</span></div>
+          {inboxError && <p className="mt-4 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{inboxError}</p>}
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            <div><h2 className="text-sm font-black text-indigo-300">Support chat</h2><div className="mt-3 space-y-3">{inbox.support.length === 0 ? <p className="rounded-xl bg-slate-800 p-4 text-sm text-slate-500">No support messages yet.</p> : inbox.support.map((item) => <article key={item.id} className="rounded-2xl bg-slate-800 p-4"><div className="flex justify-between gap-3 text-xs text-slate-500"><span>{item.email || "Unknown user"}</span><span>{item.createdAt ? new Date(item.createdAt).toLocaleString() : ""}</span></div><p className="mt-2 text-sm leading-6 text-slate-200">{item.message}</p><p className="mt-2 text-[11px] text-slate-600">{item.page || ""}</p></article>)}</div></div>
+            <div><h2 className="text-sm font-black text-indigo-300">Feedback</h2><div className="mt-3 space-y-3">{inbox.feedback.length === 0 ? <p className="rounded-xl bg-slate-800 p-4 text-sm text-slate-500">No feedback yet.</p> : inbox.feedback.map((item) => <article key={item.id} className="rounded-2xl bg-slate-800 p-4"><div className="flex justify-between gap-3 text-xs text-slate-500"><span>{item.email || "Unknown user"} · {item.type || "feedback"}</span><span>{item.createdAt ? new Date(item.createdAt).toLocaleString() : ""}</span></div><p className="mt-2 text-sm text-amber-300">{"★".repeat(Math.max(1, Math.min(5, Number(item.rating || 5))))}</p><p className="mt-2 text-sm leading-6 text-slate-200">{item.message}</p></article>)}</div></div>
+          </div>
         </section>
       </div>
     </main>
