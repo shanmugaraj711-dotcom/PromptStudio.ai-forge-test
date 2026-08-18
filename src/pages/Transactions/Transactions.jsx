@@ -14,7 +14,7 @@ export default function Transactions() {
     const load = async () => {
       try {
         const token = await user?.getIdToken();
-        const response = await fetch("/api/payment-history", { headers: { Authorization: `Bearer ${token}` } });
+        const response = await fetch("/api/razorpay-verify", { headers: { Authorization: `Bearer ${token}` } });
         const body = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(body.message || "Unable to load transactions.");
         if (active) setItems(body.transactions || []);
