@@ -8,11 +8,7 @@ const getCredential = () => {
     const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
     return cert({ projectId: parsed.project_id, clientEmail: parsed.client_email, privateKey: parsed.private_key.replace(/\\n/g, "\n") });
   }
-  return cert({
-    projectId: process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT,
-    clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-  });
+  return cert({ projectId: process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT, clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL, privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n") });
 };
 
 export const getAdminApp = () => getApps().length ? getApps()[0] : initializeApp({ credential: getCredential() });
@@ -22,14 +18,12 @@ export const adminDb = () => getFirestore(getAdminApp());
 export const requireUser = async (req) => {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  if (!token) {
-    const error = new Error("Authentication required.");
-    error.status = 401;
-    throw error;
-  }
-  return adminAuth().verifyIdToken(token);
+  if (!token) { const error = new Error("Authentication required."); error.status = 401; throw error; }
+  const decoded = await adminAuth().verifyIdToken(token);
+  if (decoded.admin === true) return decoded;
+  const profile = await adminDb().collection("users").doc(decoded.uid).get();
+  if (profile.exists && profile.data()?.suspended === true) { const error = new Error("This account is suspended. Please contact PromptStudio support."); error.status = 403; throw error; }
+  return decoded;
 };
 
-export const json = (res, status, payload) => {
-  res.status(status).setHeader("Content-Type", "application/json").end(JSON.stringify(payload));
-};
+export const json = (res, status, payload) => { res.status(status).setHeader("Content-Type", "application/json").end(JSON.stringify(payload)); };
