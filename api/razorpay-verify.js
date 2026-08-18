@@ -2,6 +2,26 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, json, requireUser } from "./_firebaseAdmin.js";
 import { isConfigured, razorpayRequest, verifyOrderSignature, verifySubscriptionSignature } from "./_razorpay.js";
 
+const paymentHistory = async (uid) => {
+  const snapshot = await adminDb().collection("paymentOrders").where("uid", "==", uid).get();
+  const transactions = snapshot.docs.map((doc) => {
+    const data = doc.data() || {};
+    return {
+      id: doc.id,
+      orderId: data.razorpayOrderId || doc.id,
+      paymentId: data.paymentId || null,
+      amountInr: Number(data.amountInr || 0),
+      credits: Number(data.credits || 0),
+      packId: data.packId || "credit_topup",
+      status: data.status || (data.fulfilled ? "paid" : "pending"),
+      fulfilled: data.fulfilled === true,
+      createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
+      paidAt: data.paidAt?.toDate?.()?.toISOString?.() || null,
+    };
+  }).sort((a, b) => new Date(b.paidAt || b.createdAt || 0) - new Date(a.paidAt || a.createdAt || 0));
+  return transactions;
+};
+
 const applyCredits = async (uid, paymentId, orderId) => {
   const db = adminDb();
   const userRef = db.collection("users").doc(uid);
@@ -36,10 +56,11 @@ const activatePro = async (uid, subscriptionId, billing) => {
 };
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return json(res, 405, { message: "Method not allowed." });
-  if (!isConfigured()) return json(res, 503, { code: "payment_not_configured", message: "Razorpay is not configured." });
+  if (!isConfigured() && req.method !== "GET") return json(res, 503, { code: "payment_not_configured", message: "Razorpay is not configured." });
   try {
     const decoded = await requireUser(req);
+    if (req.method === "GET") return json(res, 200, { transactions: await paymentHistory(decoded.uid) });
+    if (req.method !== "POST") return json(res, 405, { message: "Method not allowed." });
     const body = req.body || {};
     if (body.type === "credit") {
       if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) return json(res, 400, { message: "Incomplete payment response." });
