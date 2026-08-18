@@ -26,6 +26,12 @@ const footerGroups = [
   },
 ];
 
+const legalLinks = [
+  { label: "Terms of Service", to: "/terms" },
+  { label: "Privacy Policy", to: "/privacy" },
+  { label: "Refund & Cancellation", to: "/refund" },
+];
+
 function Footer() {
   const openChat = () => window.dispatchEvent(new CustomEvent("promptstudio:open-support"));
 
@@ -59,9 +65,12 @@ function Footer() {
           ))}
         </div>
 
-        <div className="mt-8 flex flex-col gap-2 border-t border-slate-100 pt-6 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} PromptStudio AI. All rights reserved.</p>
-          <Link to="/" className="inline-flex items-center gap-1 font-semibold text-slate-500 hover:text-slate-900">⌂ Back to Home</Link>
+        <div className="mt-8 flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-400">© {new Date().getFullYear()} PromptStudio AI. All rights reserved.</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            {legalLinks.map((link) => <Link key={link.to} to={link.to} className="font-semibold text-slate-500 hover:text-slate-900">{link.label}</Link>)}
+            <Link to="/" className="font-semibold text-slate-500 hover:text-slate-900">⌂ Back to Home</Link>
+          </div>
         </div>
       </div>
     </footer>
