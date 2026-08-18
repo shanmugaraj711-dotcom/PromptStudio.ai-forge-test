@@ -17,8 +17,10 @@ import Contact from "./pages/Contact/Contact";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RuntimeFeatureRoute } from "./components/RuntimeFeatureRoute";
 import PromptHistory from "./pages/Result/PromptHistory";
+import Transactions from "./pages/Transactions/Transactions";
 import AppLayout from "./components/layout/AppLayout";
 import SupportWidget from "./components/support/SupportWidget";
+import PaymentSuccessToast from "./components/billing/PaymentSuccessToast";
 
 const withAppLayout = (element) => <ProtectedRoute><AppLayout>{element}</AppLayout></ProtectedRoute>;
 const withRuntimeFeature = (feature, element) => <ProtectedRoute><RuntimeFeatureRoute feature={feature}><AppLayout>{element}</AppLayout></RuntimeFeatureRoute></ProtectedRoute>;
@@ -36,17 +38,17 @@ export default function App() {
         <Route path="/help" element={<Help />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/feedback" element={<Feedback />} />
-
         <Route path="/dashboard" element={withAppLayout(<Dashboard />)} />
         <Route path="/builder" element={withAppLayout(<PromptBuilder />)} />
         <Route path="/workflows" element={withAppLayout(<WorkflowLibrary />)} />
         <Route path="/account" element={withAppLayout(<Account />)} />
+        <Route path="/transactions" element={withAppLayout(<Transactions />)} />
         <Route path="/history" element={withRuntimeFeature("promptHistory", <PromptHistory />)} />
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <SupportWidget />
+      <PaymentSuccessToast />
     </>
   );
 }

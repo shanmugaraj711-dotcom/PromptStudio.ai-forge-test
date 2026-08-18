@@ -29,6 +29,10 @@ const post = async (url, body, user) => {
   return data;
 };
 
+const broadcastPurchase = (result) => {
+  window.dispatchEvent(new CustomEvent("promptstudio:payment-success", { detail: result }));
+};
+
 const openCreditCheckout = async ({ user, order, description, onSuccess }) => {
   const Razorpay = await loadCheckout();
   return new Promise((resolve, reject) => {
@@ -44,6 +48,7 @@ const openCreditCheckout = async ({ user, order, description, onSuccess }) => {
       handler: async (response) => {
         try {
           const result = await post("/api/razorpay-verify", { type: "credit", ...response }, user);
+          broadcastPurchase(result);
           await onSuccess?.(result);
           resolve(result);
         } catch (error) { reject(error); }
@@ -78,6 +83,7 @@ export const subscribeToPro = async ({ user, billing, onSuccess }) => {
       handler: async (response) => {
         try {
           const result = await post("/api/razorpay-verify", { type: "subscription", ...response }, user);
+          broadcastPurchase(result);
           await onSuccess?.(result);
           resolve(result);
         } catch (error) { reject(error); }

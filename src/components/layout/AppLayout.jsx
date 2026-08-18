@@ -8,6 +8,7 @@ const baseNavItems = [
   { to: "/builder", label: "🪄 Builder" },
   { to: "/history", label: "📜 History", feature: "promptHistory" },
   { to: "/account", label: "⚙️ Account" },
+  { to: "/transactions", label: "💳 Transactions" },
   { to: "/help", label: "❓ Help" },
 ];
 
