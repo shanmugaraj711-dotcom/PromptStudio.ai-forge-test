@@ -8,65 +8,20 @@ const now = () => new Date();
 
 const health = async (db) => {
   const config = await getRuntimeProductConfig(db);
-  return {
-    ok: true,
-    checkedAt: now().toISOString(),
-    firebaseAdmin: true,
-    gemini: Boolean(process.env.GEMINI_API_KEY),
-    razorpay: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
-    razorpayPlans: Boolean(process.env.RAZORPAY_PRO_MONTHLY_PLAN_ID && process.env.RAZORPAY_PRO_ANNUAL_PLAN_ID),
-    razorpayWebhook: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET),
-    paymentMode: config.monetization.paymentMode,
-    plans: { free: config.plans.free, pro: config.plans.pro },
-    creditPricing: config.pricing.creditPacks,
-    runtimeConfig: (await db.collection("systemConfig").doc("product").get()).exists,
-  };
+  return { ok: true, checkedAt: now().toISOString(), firebaseAdmin: true, gemini: Boolean(process.env.GEMINI_API_KEY), razorpay: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET), razorpayPlans: Boolean(process.env.RAZORPAY_PRO_MONTHLY_PLAN_ID && process.env.RAZORPAY_PRO_ANNUAL_PLAN_ID), razorpayWebhook: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET), paymentMode: config.monetization.paymentMode, plans: { free: config.plans.free, pro: config.plans.pro }, creditPricing: config.pricing.creditPacks, runtimeConfig: (await db.collection("systemConfig").doc("product").get()).exists };
 };
 
 const analytics = async (db) => {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [users, newUsers, prompts, imagePrompts, orders, paidOrders, failedPayments, subscriptions, activeSubscriptions, feedback, support] = await Promise.all([
-    count(db.collection("users")),
-    count(db.collection("users").where("createdAt", ">=", since)),
-    count(db.collectionGroup("prompts")),
-    count(db.collectionGroup("prompts").where("hasReferenceImage", "==", true)),
-    count(db.collection("paymentOrders")),
-    db.collection("paymentOrders").where("fulfilled", "==", true).get(),
-    count(db.collection("paymentOrders").where("status", "==", "failed")),
-    count(db.collection("paymentSubscriptions")),
-    count(db.collection("paymentSubscriptions").where("status", "in", ["active", "authenticated", "resumed"])),
-    count(db.collection("feedback")),
-    count(db.collection("supportMessages")),
-  ]);
+  const [users, newUsers, prompts, imagePrompts, orders, paidOrders, failedPayments, subscriptions, activeSubscriptions, feedback, support] = await Promise.all([count(db.collection("users")), count(db.collection("users").where("createdAt", ">=", since)), count(db.collectionGroup("prompts")), count(db.collectionGroup("prompts").where("hasReferenceImage", "==", true)), count(db.collection("paymentOrders")), db.collection("paymentOrders").where("fulfilled", "==", true).get(), count(db.collection("paymentOrders").where("status", "==", "failed")), count(db.collection("paymentSubscriptions")), count(db.collection("paymentSubscriptions").where("status", "in", ["active", "authenticated", "resumed"])), count(db.collection("feedback")), count(db.collection("supportMessages"))]);
   const revenue = paidOrders.docs.reduce((sum, doc) => sum + Number(doc.data().amountInr || 0), 0);
-  return {
-    ok: true,
-    checkedAt: now().toISOString(),
-    users,
-    newUsers,
-    promptsGenerated: prompts,
-    imageToPromptUsage: imagePrompts,
-    creditsPurchased: paidOrders.docs.reduce((sum, doc) => sum + Number(doc.data().credits || 0), 0),
-    creditOrders: orders,
-    proSubscribers: activeSubscriptions,
-    subscriptions,
-    revenueInr: money(revenue),
-    failedPayments,
-    feedback,
-    supportMessages: support,
-  };
+  return { ok: true, checkedAt: now().toISOString(), users, newUsers, promptsGenerated: prompts, imageToPromptUsage: imagePrompts, creditsPurchased: paidOrders.docs.reduce((sum, doc) => sum + Number(doc.data().credits || 0), 0), creditOrders: orders, proSubscribers: activeSubscriptions, subscriptions, revenueInr: money(revenue), failedPayments, feedback, supportMessages: support };
 };
 
-const mapDocs = (snap) => snap.docs.map((doc) => {
-  const data = doc.data() || {};
-  return { id: doc.id, ...data, createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || null, updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt || null };
-});
+const mapDocs = (snap) => snap.docs.map((doc) => { const data = doc.data() || {}; return { id: doc.id, ...data, createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || null, updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt || null }; });
 
 const inbox = async (db) => {
-  const [supportSnap, feedbackSnap] = await Promise.all([
-    db.collection("supportMessages").orderBy("createdAt", "desc").limit(50).get(),
-    db.collection("feedback").orderBy("createdAt", "desc").limit(20).get(),
-  ]);
+  const [supportSnap, feedbackSnap] = await Promise.all([db.collection("supportMessages").orderBy("createdAt", "desc").limit(50).get(), db.collection("feedback").orderBy("createdAt", "desc").limit(20).get()]);
   return { ok: true, support: mapDocs(supportSnap), feedback: mapDocs(feedbackSnap) };
 };
 
@@ -77,9 +32,9 @@ const userManagement = async (req, res, db, actor) => {
   }
   if (req.method !== "POST") return json(res, 405, { message: "Method not allowed." });
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
-  const { action, uid, credits, plan, trialUntil, note } = body;
+  const { action, uid, credits, plan, trialUntil, note, discountPercent, discountUntil } = body;
   if (!uid || !action) return json(res, 400, { message: "uid and action are required." });
-  if (uid === actor.uid && ["suspend", "removeCredits", "setPlan"].includes(action)) return json(res, 400, { message: "Founder account cannot be modified by this action." });
+  if (uid === actor.uid && ["suspend", "removeCredits", "setPlan", "setDiscount"].includes(action)) return json(res, 400, { message: "Founder account cannot be modified by this action." });
   const ref = db.collection("users").doc(uid);
   const snap = await ref.get();
   if (!snap.exists) return json(res, 404, { message: "User profile not found." });
@@ -92,6 +47,7 @@ const userManagement = async (req, res, db, actor) => {
   if (action === "removeCredits") update.credits = Math.max(0, Number(current.credits || 0) - amount);
   if (action === "setPlan") { if (!["free", "pro"].includes(String(plan))) return json(res, 400, { message: "Plan must be free or pro." }); update.plan = String(plan); }
   if (action === "setTrial") { if (trialUntil && Number.isNaN(Date.parse(trialUntil))) return json(res, 400, { message: "Invalid trial expiry." }); update.plan = "pro"; update.trialUntil = trialUntil || null; update.subscriptionStatus = trialUntil ? "founder_trial" : null; }
+  if (action === "setDiscount") { const pct = Number(discountPercent || 0); if (!Number.isInteger(pct) || pct < 0 || pct > 100) return json(res, 400, { message: "Discount must be between 0% and 100%." }); if (discountUntil && Number.isNaN(Date.parse(discountUntil))) return json(res, 400, { message: "Invalid discount expiry." }); update.founderDiscountPercent = pct; update.founderDiscountUntil = discountUntil || null; }
   if (action === "suspend") update.suspended = true;
   if (action === "unsuspend") update.suspended = false;
   if (action === "resetQuota") { update.dailyPromptUsage = 0; update.dailyImageUsage = 0; update.quotaVersion = (Number(current.quotaVersion || 0) + 1); }
@@ -99,15 +55,12 @@ const userManagement = async (req, res, db, actor) => {
   if (!Object.keys(update).some((key) => !["updatedAt", "founderActionBy"].includes(key))) return json(res, 400, { message: "Unsupported action." });
 
   await ref.set(update, { merge: true });
-  await db.collection("adminAuditLogs").add({ actorUid: actor.uid, action, targetUid: uid, details: { credits: amount || null, plan: plan || null, trialUntil: trialUntil || null, note: String(note || "").slice(0, 2000) }, createdAt: now() });
+  await db.collection("adminAuditLogs").add({ actorUid: actor.uid, action, targetUid: uid, details: { credits: amount || null, plan: plan || null, trialUntil: trialUntil || null, discountPercent: discountPercent ?? null, discountUntil: discountUntil || null, note: String(note || "").slice(0, 2000) }, createdAt: now() });
   return json(res, 200, { ok: true, message: "User updated successfully." });
 };
 
 const coupons = async (req, res, db, actor) => {
-  if (req.method === "GET") {
-    const snap = await db.collection("coupons").orderBy("createdAt", "desc").limit(100).get();
-    return json(res, 200, { coupons: mapDocs(snap) });
-  }
+  if (req.method === "GET") { const snap = await db.collection("coupons").orderBy("createdAt", "desc").limit(100).get(); return json(res, 200, { coupons: mapDocs(snap) }); }
   if (req.method !== "POST") return json(res, 405, { message: "Method not allowed." });
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
   const code = String(body.code || "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 40);
@@ -127,10 +80,7 @@ const coupons = async (req, res, db, actor) => {
 };
 
 const support = async (req, res, db, actor) => {
-  if (req.method === "GET") {
-    const snap = await db.collection("supportMessages").orderBy("createdAt", "desc").limit(100).get();
-    return json(res, 200, { messages: mapDocs(snap) });
-  }
+  if (req.method === "GET") { const snap = await db.collection("supportMessages").orderBy("createdAt", "desc").limit(100).get(); return json(res, 200, { messages: mapDocs(snap) }); }
   if (req.method !== "POST") return json(res, 405, { message: "Method not allowed." });
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
   const id = String(body.id || "").trim();
@@ -165,8 +115,5 @@ export default async function handler(req, res) {
       return json(res, 200, { ok: true, config: after });
     }
     return json(res, 405, { message: "Unsupported admin operation." });
-  } catch (error) {
-    console.error("Founder admin operation failed", { action, code: error?.code || "unknown" });
-    return json(res, error?.status || 500, { message: error?.message || "Founder admin operation failed." });
-  }
+  } catch (error) { console.error("Founder admin operation failed", { action, code: error?.code || "unknown" }); return json(res, error?.status || 500, { message: error?.message || "Founder admin operation failed." }); }
 }
