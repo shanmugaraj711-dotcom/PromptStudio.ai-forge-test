@@ -12,8 +12,9 @@ const applyCredits = async (uid, paymentId, orderId) => {
     const payment = paymentSnap.data();
     if (payment.uid !== uid) throw new Error("Payment does not belong to this account.");
     if (payment.fulfilled === true) return;
+    if (!Number.isFinite(Number(payment.credits)) || Number(payment.credits) <= 0) throw new Error("Payment order has an invalid credit amount.");
     const user = userSnap.exists ? userSnap.data() : {};
-    const credits = Math.max(Number(user.credits || 0), 0) + Math.max(Number(payment.credits || 0), 0);
+    const credits = Math.max(Number(user.credits || 0), 0) + Number(payment.credits);
     tx.set(userRef, { credits, quotaVersion: FieldValue.increment(1) }, { merge: true });
     tx.set(paymentRef, { fulfilled: true, status: "paid", paymentId, paidAt: new Date() }, { merge: true });
   });
