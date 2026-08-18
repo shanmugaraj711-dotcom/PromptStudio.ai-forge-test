@@ -21,6 +21,9 @@
     { "src": "/api/admin-analytics", "dest": "/api/admin?action=analytics" },
     { "src": "/api/admin-config", "dest": "/api/admin?action=config" },
     { "src": "/api/admin-inbox", "dest": "/api/admin?action=inbox" },
+    { "src": "/api/admin-user-management", "dest": "/api/admin?action=users" },
+    { "src": "/api/admin-support", "dest": "/api/admin?action=support" },
+    { "src": "/api/admin-coupons", "dest": "/api/admin?action=coupons" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
