@@ -48,8 +48,9 @@ export default async function handler(req, res) {
       if (!verifyOrderSignature({ orderId: body.razorpay_order_id, paymentId: body.razorpay_payment_id, signature: body.razorpay_signature })) return json(res, 400, { code: "invalid_signature", message: "Payment verification failed." });
       const order = await razorpayRequest(`/orders/${encodeURIComponent(body.razorpay_order_id)}`);
       if (order.status !== "paid") return json(res, 409, { code: "payment_not_captured", message: "Payment is not captured yet. Please wait a moment and refresh." });
+      const orderData = orderSnap.data();
       await applyCredits(decoded.uid, body.razorpay_payment_id, body.razorpay_order_id);
-      return json(res, 200, { ok: true, type: "credit", creditsAdded: orderSnap.data().credits });
+      return json(res, 200, { ok: true, type: "credit", creditsAdded: orderData.credits, amountInr: orderData.amountInr, orderId: body.razorpay_order_id, paymentId: body.razorpay_payment_id, paidAt: new Date().toISOString() });
     }
     if (body.type === "subscription") {
       if (!body.razorpay_subscription_id || !body.razorpay_payment_id || !body.razorpay_signature) return json(res, 400, { message: "Incomplete subscription response." });
