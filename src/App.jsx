@@ -14,6 +14,9 @@ import About from "./pages/About/About";
 import Help from "./pages/Help/Help";
 import Feedback from "./pages/Feedback/Feedback";
 import Contact from "./pages/Contact/Contact";
+import Terms from "./pages/Legal/Terms";
+import Privacy from "./pages/Legal/Privacy";
+import Refund from "./pages/Legal/Refund";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RuntimeFeatureRoute } from "./components/RuntimeFeatureRoute";
 import PromptHistory from "./pages/Result/PromptHistory";
@@ -38,6 +41,9 @@ export default function App() {
         <Route path="/help" element={<Help />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/feedback" element={<Feedback />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/refund" element={<Refund />} />
         <Route path="/dashboard" element={withAppLayout(<Dashboard />)} />
         <Route path="/builder" element={withAppLayout(<PromptBuilder />)} />
         <Route path="/workflows" element={withAppLayout(<WorkflowLibrary />)} />
