@@ -1,6 +1,6 @@
 import { getAICatalog } from '../../config/aiCatalog';
 
-function AIDiscoveryPanel({ category, aiModel, onExample }) {
+function AIDiscoveryPanel({ category, aiModel, onToolSelect, onExample }) {
   const catalog = getAICatalog(category);
 
   return (
@@ -13,13 +13,13 @@ function AIDiscoveryPanel({ category, aiModel, onExample }) {
         <span className="w-fit rounded-full bg-white px-3 py-1 text-[11px] font-bold text-indigo-700 shadow-sm">Explore by category</span>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0">
         {catalog.tools.map((tool) => (
           <button
             key={tool.id}
             type="button"
-            onClick={() => onExample({ modelId: tool.modelId })}
-            className={`rounded-xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md ${aiModel === tool.modelId ? 'border-indigo-400 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200 bg-white'}`}
+            onClick={() => onToolSelect?.({ modelId: tool.modelId })}
+            className={`min-w-[230px] snap-start rounded-xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md sm:min-w-0 ${aiModel === tool.modelId ? 'border-indigo-400 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200 bg-white'}`}
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-bold text-slate-900">{tool.name}</span>
@@ -32,15 +32,15 @@ function AIDiscoveryPanel({ category, aiModel, onExample }) {
 
       <div className="mt-5 border-t border-indigo-100 pt-4">
         <div className="flex items-center justify-between gap-3">
-          <div><p className="text-sm font-black text-slate-900">💡 Try an example</p><p className="mt-1 text-xs text-slate-500">Pick one to fill the builder instantly. You can edit it before generating.</p></div>
+          <div><p className="text-sm font-black text-slate-900">💡 Try an example</p><p className="mt-1 text-xs text-slate-500">Examples fill the prompt only — your selected AI stays unchanged.</p></div>
         </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <div className="mt-3 flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible md:pb-0">
           {catalog.examples.map((example) => (
             <button
               key={example.title}
               type="button"
-              onClick={() => onExample(example)}
-              className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md"
+              onClick={() => onExample?.(example)}
+              className="min-w-[235px] snap-start rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md md:min-w-0"
             >
               <p className="text-xs font-black text-indigo-700">{example.title}</p>
               <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{example.description}</p>
