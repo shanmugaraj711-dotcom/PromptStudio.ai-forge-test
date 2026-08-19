@@ -31,12 +31,15 @@ function Hero() {
               <span className="rounded-full bg-slate-50 px-3 py-1.5 ring-1 ring-slate-200">✨ Creative prompts</span>
             </div>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link to="/image-to-prompt">
                 <Button variant="primary" size="lg">🖼️ Image → Prompt</Button>
               </Link>
               <a href="#prompt-builder">
                 <Button variant="secondary" size="lg">✍️ Build a Prompt</Button>
+              </a>
+              <a href="#demo" className="sm:w-full lg:w-auto">
+                <Button variant="secondary" size="md">▶ See how it works</Button>
               </a>
             </div>
 
