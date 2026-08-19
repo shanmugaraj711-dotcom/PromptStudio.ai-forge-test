@@ -4,10 +4,10 @@ import { getRuntimeProductConfig } from "./_productConfig.js";
 
 const PLAN_ENV = { monthly: "RAZORPAY_PRO_MONTHLY_PLAN_ID", annual: "RAZORPAY_PRO_ANNUAL_PLAN_ID" };
 
-// Razorpay currently caps subscription end_time at a fixed Unix timestamp.
-// Keep the subscription horizon safely below that cap while still providing
-// a long-lived recurring Pro subscription.
-const SUBSCRIPTION_CYCLES = { monthly: 1080, annual: 90 };
+// Keep the subscription horizon safely inside Razorpay's UPI 30-year expiry limit.
+// This preserves long-lived recurring Pro subscriptions without creating an
+// expire_at timestamp that UPI rejects.
+const SUBSCRIPTION_CYCLES = { monthly: 348, annual: 29 };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return json(res, 405, { message: "Method not allowed." });
