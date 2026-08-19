@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import Landing from "./pages/Landing/Landing";
 import Login from "./pages/Auth/Login";
@@ -26,12 +27,45 @@ import AppLayout from "./components/layout/AppLayout";
 import SupportWidget from "./components/support/SupportWidget";
 import PaymentSuccessToast from "./components/billing/PaymentSuccessToast";
 
+const PAGE_TITLES = {
+  "/": "PromptStudio AI — Better prompts for every AI",
+  "/image-to-prompt": "Image to Prompt Generator | PromptStudio AI",
+  "/about": "About | PromptStudio AI",
+  "/help": "Help Center | PromptStudio AI",
+  "/contact": "Contact | PromptStudio AI",
+  "/feedback": "Feedback | PromptStudio AI",
+  "/terms": "Terms | PromptStudio AI",
+  "/privacy": "Privacy | PromptStudio AI",
+  "/refund": "Refund Policy | PromptStudio AI",
+  "/login": "Log in | PromptStudio AI",
+  "/signup": "Create your account | PromptStudio AI",
+  "/forgot-password": "Reset password | PromptStudio AI",
+  "/builder": "Builder | PromptStudio AI",
+  "/dashboard": "Dashboard | PromptStudio AI",
+  "/history": "History | PromptStudio AI",
+  "/account": "Account | PromptStudio AI",
+  "/workflows": "Workflows | PromptStudio AI",
+  "/transactions": "Transactions | PromptStudio AI",
+};
+
+function RouteTitle() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const title = PAGE_TITLES[pathname];
+    if (title) document.title = title;
+  }, [pathname]);
+
+  return null;
+}
+
 const withAppLayout = (element) => <ProtectedRoute><AppLayout>{element}</AppLayout></ProtectedRoute>;
 const withRuntimeFeature = (feature, element) => <ProtectedRoute><RuntimeFeatureRoute feature={feature}><AppLayout>{element}</AppLayout></RuntimeFeatureRoute></ProtectedRoute>;
 
 export default function App() {
   return (
     <>
+      <RouteTitle />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/image-to-prompt" element={<ImageToPrompt />} />
