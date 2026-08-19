@@ -35,7 +35,7 @@ export const setPromptFavorite = async (uid, promptId, favorite) => {
   } catch (error) {
     // Keep the normal client-side Firestore path first. If an environment is
     // still serving the previous Firestore rules, retry through the authenticated
-    // server endpoint so the feature remains reliable without weakening access.
+    // server path so favorites remain reliable without weakening access control.
     if (error?.code !== "permission-denied") throw error;
   }
 
@@ -43,20 +43,20 @@ export const setPromptFavorite = async (uid, promptId, favorite) => {
   if (!currentUser) throw new Error("User not authenticated");
 
   const token = await currentUser.getIdToken();
-  const response = await fetch("/api/toggle-favorite", {
+  const response = await fetch("/api/share-prompt", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ promptId, favorite: Boolean(favorite) }),
+    body: JSON.stringify({ action: "favorite", promptId, favorite: Boolean(favorite) }),
   });
 
   if (!response.ok) {
     let payload = null;
     try { payload = await response.json(); } catch { /* ignore malformed error payload */ }
-    const error = new Error(payload?.message || "Unable to update that favorite right now.");
-    error.status = response.status;
-    throw error;
+    const fallbackError = new Error(payload?.message || "Unable to update that favorite right now.");
+    fallbackError.status = response.status;
+    throw fallbackError;
   }
 };
