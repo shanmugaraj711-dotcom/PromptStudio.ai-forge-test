@@ -1,5 +1,5 @@
 import { FieldValue } from "firebase-admin/firestore";
-import { adminDb, json, requireUser } from "./_firebaseAdmin.js";
+import { adminAuth, adminDb, json, requireUser } from "./_firebaseAdmin.js";
 
 const DEFAULT_CONFIG = { enabled: true, referrerCredits: 5, refereeCredits: 5, rewardOn: "signup" };
 const CODE_RE = /^[A-Z0-9]{8}$/;
@@ -23,6 +23,8 @@ export default async function handler(req, res) {
       return json(res, 200, { code, ...config, referrals: referralsSnap.docs.map((d) => ({ id: d.id, status: d.data().status || "completed", createdAt: d.data().createdAt || null })) });
     }
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {}); const code = normalizeCode(body.code); if (!CODE_RE.test(code)) return json(res, 400, { message: "Invalid referral code." });
+    const createdAt = new Date((await adminAuth().getUser(user.uid)).metadata.creationTime || 0).getTime();
+    if (!createdAt || Date.now() - createdAt > 30 * 60 * 1000) return json(res, 403, { message: "Referral rewards are available only during new-account signup." });
     const config = await getConfig(db); if (!config.enabled) return json(res, 409, { message: "Referral rewards are currently disabled." });
     const codeSnap = await db.collection("referralCodes").doc(code).get(); if (!codeSnap.exists) return json(res, 404, { message: "Referral code not found." }); const referrerUid = codeSnap.data()?.uid;
     if (!referrerUid || referrerUid === user.uid) return json(res, 400, { message: "You cannot use your own referral code." });
