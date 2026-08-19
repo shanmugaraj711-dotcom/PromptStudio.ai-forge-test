@@ -34,13 +34,13 @@ const reserve = async ({ db, uid, requestId, now, hasImage, productConfig }) => 
     if (requestSnap.exists) { const request = requestSnap.data(); if (request.status === "succeeded" && request.prompt && request.quota) return { status: "succeeded", ...request }; throw new ApiError(409, "request_in_progress", "This generation request is still being processed. Please wait a moment."); }
     const user = userSnap.exists ? userSnap.data() : {};
     const quota = createQuotaState(user, now, productConfig);
-    if (hasImage && quota.imageLimit !== null && quota.imageRemaining <= 0) throw new ApiError(429, "image_quota_exhausted", `You've reached your ${quota.imagePeriod}ly reference-image limit.`, quota);
-    const usesFreePrompt = quota.remaining > 0;
+    const imageFreeAvailable = !hasImage || quota.imageLimit === null || quota.imageRemaining > 0;
+    const usesFreePrompt = quota.remaining > 0 && imageFreeAvailable;
     const creditCost = hasImage ? productConfig.creditCosts.referenceImageAnalysis : productConfig.creditCosts.standardGeneration;
     const credits = Math.max(Number(user.credits || 0), 0);
     if (!usesFreePrompt && credits < creditCost) throw new ApiError(402, "credits_required", `You need ${creditCost} credits for this generation.`, quota);
-    const nextState = { plan: quota.plan, promptsToday: usesFreePrompt ? quota.promptsToday + 1 : quota.promptsToday, lastPromptDate: dateKey, imageAnalysesToday: quota.imageAnalysesToday, lastImageAnalysisDate: quota.lastImageAnalysisDate, imageAnalysesThisMonth: quota.imageAnalysesThisMonth, lastImageAnalysisMonth: quota.lastImageAnalysisMonth, quotaVersion: quota.quotaVersion + 1 };
-    if (hasImage) { if (quota.dailyImageLimit !== null) { nextState.imageAnalysesToday = quota.imageAnalysesToday + 1; nextState.lastImageAnalysisDate = dateKey; } else { nextState.imageAnalysesThisMonth = quota.imageAnalysesThisMonth + 1; nextState.lastImageAnalysisMonth = monthKey; } }
+    const nextState = { plan: quota.plan, promptsToday: usesFreePrompt ? quota.promptsToday + 1 : quota.promptsToday, lastPromptDate: usesFreePrompt ? dateKey : quota.lastPromptDate, imageAnalysesToday: quota.imageAnalysesToday, lastImageAnalysisDate: quota.lastImageAnalysisDate, imageAnalysesThisMonth: quota.imageAnalysesThisMonth, lastImageAnalysisMonth: quota.lastImageAnalysisMonth, quotaVersion: quota.quotaVersion + 1 };
+    if (hasImage && usesFreePrompt) { if (quota.dailyImageLimit !== null) { nextState.imageAnalysesToday = quota.imageAnalysesToday + 1; nextState.lastImageAnalysisDate = dateKey; } else { nextState.imageAnalysesThisMonth = quota.imageAnalysesThisMonth + 1; nextState.lastImageAnalysisMonth = monthKey; } }
     const reservedQuota = createQuotaState(nextState, now, productConfig);
     const creditDeducted = usesFreePrompt ? 0 : creditCost;
     tx.set(userRef, { ...quotaFields(reservedQuota), credits: credits - creditDeducted }, { merge: true });
@@ -56,7 +56,7 @@ const rollback = async ({ db, uid, requestId, now, failureCode, productConfig })
     if (!requestSnap.exists || requestSnap.data().status !== "reserved") return createQuotaState(userSnap.exists ? userSnap.data() : {}, now, productConfig);
     const reservation = requestSnap.data(); const user = userSnap.exists ? userSnap.data() : {}; const quota = createQuotaState(user, now, productConfig);
     const restored = { plan: quota.plan, promptsToday: reservation.usesFreePrompt && reservation.dateKey === dateKey && quota.lastPromptDate === dateKey ? Math.max(quota.promptsToday - 1, 0) : quota.promptsToday, lastPromptDate: quota.lastPromptDate, imageAnalysesToday: quota.imageAnalysesToday, lastImageAnalysisDate: quota.lastImageAnalysisDate, imageAnalysesThisMonth: quota.imageAnalysesThisMonth, lastImageAnalysisMonth: quota.lastImageAnalysisMonth, quotaVersion: quota.quotaVersion + 1 };
-    if (reservation.hasImage) { if (quota.dailyImageLimit !== null && reservation.dateKey === dateKey) restored.imageAnalysesToday = Math.max(quota.imageAnalysesToday - 1, 0); if (quota.monthlyImageLimit !== null && reservation.monthKey === monthKey) restored.imageAnalysesThisMonth = Math.max(quota.imageAnalysesThisMonth - 1, 0); }
+    if (reservation.hasImage && reservation.usesFreePrompt) { if (quota.dailyImageLimit !== null && reservation.dateKey === dateKey) restored.imageAnalysesToday = Math.max(quota.imageAnalysesToday - 1, 0); if (quota.monthlyImageLimit !== null && reservation.monthKey === monthKey) restored.imageAnalysesThisMonth = Math.max(quota.imageAnalysesThisMonth - 1, 0); }
     const restoredQuota = createQuotaState(restored, now, productConfig); const restoredCredits = Math.max(Number(user.credits || 0), 0) + Math.max(Number(reservation.creditCost || 0), 0);
     tx.set(userRef, { ...quotaFields(restoredQuota), credits: restoredCredits }, { merge: true }); tx.update(requestRef, { status: "rolled_back", failureCode, quota: restoredQuota, creditsRemaining: restoredCredits, completedAt: FieldValue.serverTimestamp() }); return restoredQuota;
   });
