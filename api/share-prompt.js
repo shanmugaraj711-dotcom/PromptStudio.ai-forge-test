@@ -73,11 +73,29 @@ export default async function handler(request, response) {
       try { decoded = await auth.verifyIdToken(token); }
       catch { throw new ApiError(401, 'unauthenticated', 'Please sign in to share a prompt.'); }
 
+      const body = parseBody(request.body);
+
+      // Favorite updates use the same authenticated server function as sharing,
+      // avoiding an extra Vercel Function on the Hobby plan. Ownership is enforced
+      // by deriving the Firestore path exclusively from the verified UID.
+      if (body.action === 'favorite') {
+        const promptId = typeof body.promptId === 'string' ? body.promptId.trim() : '';
+        const favorite = body.favorite;
+        if (!promptId || promptId.length > 200 || typeof favorite !== 'boolean') {
+          throw new ApiError(400, 'invalid_request', 'Invalid favorite update.');
+        }
+
+        const promptRef = db.collection('users').doc(decoded.uid).collection('prompts').doc(promptId);
+        const promptSnapshot = await promptRef.get();
+        if (!promptSnapshot.exists) throw new ApiError(404, 'prompt_not_found', 'Prompt not found.');
+        await promptRef.update({ favorite });
+        return sendJson(response, 200, { status: 'success', favorite });
+      }
+
       const profile = await db.collection('users').doc(decoded.uid).get();
       const plan = profile.exists ? profile.data()?.plan : 'free';
       if (plan !== 'pro') throw new ApiError(403, 'pro_required', 'Shareable prompt links are a Pro feature.');
 
-      const body = parseBody(request.body);
       const prompt = sanitizePrompt(body.prompt);
       if (prompt.length < 3) throw new ApiError(400, 'invalid_prompt', 'The prompt is too short to share.');
 
