@@ -17,6 +17,7 @@ import Contact from "./pages/Contact/Contact";
 import Terms from "./pages/Legal/Terms";
 import Privacy from "./pages/Legal/Privacy";
 import Refund from "./pages/Legal/Refund";
+import ImageToPrompt from "./pages/ImageToPrompt/ImageToPrompt";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RuntimeFeatureRoute } from "./components/RuntimeFeatureRoute";
 import PromptHistory from "./pages/Result/PromptHistory";
@@ -33,6 +34,7 @@ export default function App() {
     <>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/image-to-prompt" element={<ImageToPrompt />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
