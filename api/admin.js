@@ -21,6 +21,24 @@ const analytics = async (db) => {
 const mapDocs = (snap) => snap.docs.map((doc) => { const data = doc.data() || {}; return { id: doc.id, ...data, createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || null, updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt || null }; });
 const inbox = async (db) => { const [supportSnap, feedbackSnap] = await Promise.all([db.collection("supportMessages").orderBy("createdAt", "desc").limit(50).get(), db.collection("feedback").orderBy("createdAt", "desc").limit(20).get()]); return { ok: true, support: mapDocs(supportSnap), feedback: mapDocs(feedbackSnap) }; };
 
+const referralConfig = async (req, res, db, actor) => {
+  const ref = db.collection("system").doc("referrals");
+  if (req.method === "GET") {
+    const snap = await ref.get(); const data = snap.exists ? snap.data() : {};
+    const config = { enabled: data.enabled !== false, referrerCredits: Math.max(0, Math.min(1000, Number(data.referrerCredits ?? 5))), refereeCredits: Math.max(0, Math.min(1000, Number(data.refereeCredits ?? 5))), rewardOn: "signup" };
+    const referrals = await db.collection("referrals").orderBy("createdAt", "desc").limit(100).get();
+    return json(res, 200, { config, referrals: mapDocs(referrals) });
+  }
+  if (req.method !== "PUT") return json(res, 405, { message: "Method not allowed." });
+  const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+  const referrerCredits = Number(body.referrerCredits); const refereeCredits = Number(body.refereeCredits);
+  if (!Number.isInteger(referrerCredits) || referrerCredits < 0 || referrerCredits > 1000 || !Number.isInteger(refereeCredits) || refereeCredits < 0 || refereeCredits > 1000) return json(res, 400, { message: "Referral rewards must be whole numbers between 0 and 1,000 credits." });
+  const config = { enabled: body.enabled !== false, referrerCredits, refereeCredits, rewardOn: "signup", updatedAt: now(), updatedBy: actor.uid };
+  await ref.set(config, { merge: true });
+  await db.collection("adminAuditLogs").add({ actorUid: actor.uid, action: "updateReferralRewards", targetUid: null, details: { enabled: config.enabled, referrerCredits, refereeCredits, rewardOn: "signup" }, createdAt: now() });
+  return json(res, 200, { ok: true, config });
+};
+
 const userManagement = async (req, res, db, actor) => {
   if (req.method === "GET") { const snap = await db.collection("users").orderBy("createdAt", "desc").limit(100).get(); return json(res, 200, { users: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) }); }
   if (req.method !== "POST") return json(res, 405, { message: "Method not allowed." });
@@ -70,7 +88,7 @@ const support = async (req, res, db, actor) => {
 export default async function handler(req, res) {
   const action = String(req.query?.action || req.body?.action || "health");
   try {
-    const writeAction = ["config", "users", "support", "coupons"].includes(action) && req.method !== "GET"; const actor = await requireFounderAdmin(req, { write: writeAction && action === "config" }); const db = adminDb();
+    const writeAction = ["config", "users", "support", "coupons", "referrals"].includes(action) && req.method !== "GET"; const actor = await requireFounderAdmin(req, { write: writeAction && action === "config" }); const db = adminDb();
     if (req.method === "GET" && action === "health") { adminAuth(); return json(res, 200, await health(db)); }
     if (req.method === "GET" && action === "analytics") return json(res, 200, await analytics(db));
     if (req.method === "GET" && action === "config") return json(res, 200, { config: await getRuntimeProductConfig(db) });
@@ -78,6 +96,7 @@ export default async function handler(req, res) {
     if (["users", "user-management"].includes(action)) return await userManagement(req, res, db, actor);
     if (["support", "support-inbox"].includes(action)) return await support(req, res, db, actor);
     if (["coupons", "coupon"].includes(action)) return await coupons(req, res, db, actor);
+    if (["referrals", "referral-rewards"].includes(action)) return await referralConfig(req, res, db, actor);
     if (req.method === "PUT" && action === "config") { const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {}); if (!body.config || typeof body.config !== "object") return json(res, 400, { message: "A product configuration object is required." }); const before = await getRuntimeProductConfig(db); const after = await saveRuntimeProductConfig({ db, config: body.config, actor: actor.uid }); await writeConfigAudit({ db, actor, before, after, requestId: body.requestId }); return json(res, 200, { ok: true, config: after }); }
     return json(res, 405, { message: "Unsupported admin operation." });
   } catch (error) { console.error("Founder admin operation failed", { action, code: error?.code || "unknown" }); return json(res, error?.status || 500, { message: error?.message || "Founder admin operation failed." }); }
