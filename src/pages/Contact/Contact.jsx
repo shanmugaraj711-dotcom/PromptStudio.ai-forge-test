@@ -27,7 +27,7 @@ export default function Contact() {
               {item.event ? (
                 <button type="button" onClick={openChat} className="mt-5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold hover:bg-indigo-500">{item.action}</button>
               ) : (
-                <Link to={item.to} className="mt-5 inline-flex rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-bold text-slate-200 hover:bg-slate-800">{item.action}</Link>
+                <Link to={item.to} aria-label={`Open PromptStudio ${item.title}`} className="mt-5 inline-flex rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-bold text-slate-200 hover:bg-slate-800">{item.action}</Link>
               )}
             </article>
           ))}
