@@ -8,7 +8,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 
 export const subscribeToPromptHistory = (uid, onChange, onError) => {
   if (!uid) throw new Error("User not authenticated");
@@ -26,7 +26,37 @@ export const deletePrompt = async (uid, promptId) => {
 
 export const setPromptFavorite = async (uid, promptId, favorite) => {
   if (!uid || !promptId) throw new Error("Missing user or prompt ID");
-  await updateDoc(doc(db, "users", uid, "prompts", promptId), {
-    favorite: Boolean(favorite),
+
+  try {
+    await updateDoc(doc(db, "users", uid, "prompts", promptId), {
+      favorite: Boolean(favorite),
+    });
+    return;
+  } catch (error) {
+    // Keep the normal client-side Firestore path first. If an environment is
+    // still serving the previous Firestore rules, retry through the authenticated
+    // server endpoint so the feature remains reliable without weakening access.
+    if (error?.code !== "permission-denied") throw error;
+  }
+
+  const currentUser = auth.currentUser;
+  if (!currentUser) throw new Error("User not authenticated");
+
+  const token = await currentUser.getIdToken();
+  const response = await fetch("/api/toggle-favorite", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ promptId, favorite: Boolean(favorite) }),
   });
+
+  if (!response.ok) {
+    let payload = null;
+    try { payload = await response.json(); } catch { /* ignore malformed error payload */ }
+    const error = new Error(payload?.message || "Unable to update that favorite right now.");
+    error.status = response.status;
+    throw error;
+  }
 };
