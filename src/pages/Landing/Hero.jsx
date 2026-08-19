@@ -38,7 +38,7 @@ function Hero() {
               <a href="#prompt-builder">
                 <Button variant="secondary" size="lg">✍️ Build a Prompt</Button>
               </a>
-              <a href="#demo" className="sm:w-full lg:w-auto">
+              <a href="#how-it-works" className="sm:w-full lg:w-auto">
                 <Button variant="secondary" size="md">▶ See how it works</Button>
               </a>
             </div>
