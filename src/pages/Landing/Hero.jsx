@@ -35,9 +35,9 @@ function Hero() {
               <Link to="/image-to-prompt">
                 <Button variant="primary" size="lg">🖼️ Image → Prompt</Button>
               </Link>
-              <a href="#prompt-builder">
+              <Link to="/builder">
                 <Button variant="secondary" size="lg">✍️ Build a Prompt</Button>
-              </a>
+              </Link>
               <a href="#how-it-works" className="sm:w-full lg:w-auto">
                 <Button variant="secondary" size="md">▶ See how it works</Button>
               </a>
@@ -76,8 +76,8 @@ function Hero() {
                 <span className="mt-4 inline-flex text-sm font-bold text-blue-600">Try Image → Prompt <span className="ml-1 transition group-hover:translate-x-1">→</span></span>
               </Link>
 
-              <a
-                href="#prompt-builder"
+              <Link
+                to="/builder"
                 className="group rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.35)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_30px_80px_-38px_rgba(15,23,42,0.45)]"
               >
                 <div className="overflow-hidden rounded-2xl bg-slate-950 p-4">
@@ -97,7 +97,7 @@ function Hero() {
                 <h2 className="mt-5 text-xl font-bold text-slate-950">Starting with an idea?</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">Build prompts for coding, SQL, writing, research and everyday AI work.</p>
                 <span className="mt-4 inline-flex text-sm font-bold text-slate-800">Open Prompt Builder <span className="ml-1 transition group-hover:translate-x-1">→</span></span>
-              </a>
+              </Link>
             </div>
 
             <div className="mx-auto mt-4 flex max-w-md items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-xs font-semibold text-slate-500 shadow-lg shadow-slate-200/40 backdrop-blur">
