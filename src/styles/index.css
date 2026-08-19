@@ -15,3 +15,36 @@ select:focus,
 input:focus {
   outline: none;
 }
+
+/* Builder UX: preserve the existing generation logic while making the journey feel linear. */
+@media (min-width: 1024px) {
+  #prompt-builder form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  #prompt-builder form > div {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
+
+  #prompt-builder form > .builder-ai-panel,
+  #prompt-builder form > div:has(#category) {
+    grid-column: 1 / -1;
+  }
+
+  #prompt-builder form > div:has(#idea) {
+    grid-column: 1;
+  }
+
+  #prompt-builder form > div:has(input[type="file"]) {
+    grid-column: 2;
+  }
+}
+
+/* Keep the result heading visible when a user switches between generated approaches. */
+#prompt-builder .builder-result-anchor {
+  scroll-margin-top: 6.5rem;
+}
