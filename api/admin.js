@@ -12,7 +12,10 @@ const analytics = async (db) => {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [users, newUsers, prompts, imagePrompts, orders, paidOrders, failedPayments, subscriptions, activeSubscriptions, feedback, support] = await Promise.all([count(db.collection("users")), count(db.collection("users").where("createdAt", ">=", since)), count(db.collectionGroup("prompts")), count(db.collectionGroup("prompts").where("hasReferenceImage", "==", true)), count(db.collection("paymentOrders")), db.collection("paymentOrders").where("fulfilled", "==", true).get(), count(db.collection("paymentOrders").where("status", "==", "failed")), count(db.collection("paymentSubscriptions")), count(db.collection("paymentSubscriptions").where("status", "in", ["active", "authenticated", "resumed"])), count(db.collection("feedback")), count(db.collection("supportMessages"))]);
   const revenue = paidOrders.docs.reduce((sum, doc) => sum + Number(doc.data().amountInr || 0), 0);
-  return { ok: true, checkedAt: now().toISOString(), users, newUsers, promptsGenerated: prompts, imageToPromptUsage: imagePrompts, creditsPurchased: paidOrders.docs.reduce((sum, doc) => sum + Number(doc.data().credits || 0), 0), creditOrders: orders, proSubscribers: activeSubscriptions, subscriptions, revenueInr: money(revenue), failedPayments, feedback, supportMessages: support };
+  const paidCustomerUids = new Set(paidOrders.docs.map((doc) => doc.data().uid).filter(Boolean));
+  const paidCustomers = paidCustomerUids.size;
+  const freeToPaidConversionPercent = users > 0 ? money((paidCustomers / users) * 100) : 0;
+  return { ok: true, checkedAt: now().toISOString(), users, newUsers, promptsGenerated: prompts, imageToPromptUsage: imagePrompts, creditsPurchased: paidOrders.docs.reduce((sum, doc) => sum + Number(doc.data().credits || 0), 0), creditOrders: orders, paidCustomers, freeToPaidConversionPercent, proSubscribers: activeSubscriptions, subscriptions, revenueInr: money(revenue), failedPayments, feedback, supportMessages: support };
 };
 
 const mapDocs = (snap) => snap.docs.map((doc) => { const data = doc.data() || {}; return { id: doc.id, ...data, createdAt: data.createdAt?.toDate?.()?.toISOString?.() || data.createdAt || null, updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() || data.updatedAt || null }; });
