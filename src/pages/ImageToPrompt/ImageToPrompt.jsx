@@ -26,7 +26,7 @@ function ImageToPrompt() {
             <a href="/signup" className="rounded-xl bg-slate-950 px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
               Try Image → Prompt free
             </a>
-            <a href="/" className="rounded-xl border border-slate-200 px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            <a href="/login" className="rounded-xl border border-slate-200 px-6 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
               Explore PromptStudio
             </a>
           </div>
