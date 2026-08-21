@@ -8,20 +8,23 @@
 - [x] API v1 contract documented
 - [x] Thin Image → Prompt API adapter implemented
 - [x] Single development branch established
+- [x] Versioned transaction lookup adapter implemented
+- [x] Versioned support adapter implemented
+- [x] Provider-neutral WhatsApp setup documented
+- [x] Plugin contract documented
 
 ## Remaining implementation before WhatsApp provider setup
 - [ ] Shared generation service extraction without behavior change
-- [ ] Shared transaction lookup service
-- [ ] Shared support-ticket/service boundary
-- [ ] Versioned integration auth contract
+- [ ] Shared transaction/support service extraction where duplication is proven
+- [ ] Scoped integration authentication for non-user-channel adapters
 - [ ] Integration request-id and idempotency utilities
 - [ ] Integration-specific rate-limit policy
 - [ ] Common API error envelope
 - [ ] API contract tests
 - [ ] Regression tests for existing web generation and credits
 - [ ] Integration test for concurrent credit reservation
-- [ ] Plugin adapter contract
-- [ ] WhatsApp adapter contract (provider-neutral until credentials/webhook are configured)
+- [ ] Plugin adapter implementation
+- [ ] WhatsApp adapter implementation (provider-neutral until credentials/webhook are configured)
 - [ ] Integration analytics/events
 - [ ] Preview verification
 
