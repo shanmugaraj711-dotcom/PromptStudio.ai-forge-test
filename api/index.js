@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     if (typeof target !== "function") throw new Error("API module does not export a default handler.");
     return await target(req, res);
   } catch (error) {
-    console.error("PromptStudio API gateway failed", { route, code: error?.code || "unknown" });
+    console.error("PromptStudio API gateway failed", { route, code: error?.code || "unknown", message: error?.message, stack: error?.stack });
     if (!res.headersSent) {
       res.statusCode = Number(error?.status) || 500;
       res.setHeader("Content-Type", "application/json; charset=utf-8");
