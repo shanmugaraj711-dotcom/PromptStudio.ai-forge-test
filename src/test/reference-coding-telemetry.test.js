@@ -10,15 +10,15 @@ const mocks = vi.hoisted(() => ({
 vi.mock('firebase-admin/firestore', () => ({
   FieldValue: { serverTimestamp: mocks.serverTimestamp },
 }));
-vi.mock('../server/api/_firebaseAdmin.js', () => ({
+vi.mock('../../server/api/_firebaseAdmin.js', () => ({
   adminDb: mocks.adminDb,
   requireUser: mocks.requireUser,
 }));
-vi.mock('../server/api/generate-prompt.js', () => ({
+vi.mock('../../server/api/generate-prompt.js', () => ({
   default: mocks.generatePromptHandler,
 }));
 
-import handler from '../server/api/reference-coding.js';
+import handler from '../../server/api/reference-coding.js';
 
 describe('reference-coding telemetry', () => {
   let telemetryRows;
