@@ -29,6 +29,19 @@ describe("PromptBuilder", () => {
     mocks.generatePrompt.mockReset();
     mocks.generatePrompt.mockResolvedValue({
       prompt: "A polished prompt returned by the API",
+      historyId: "history-1",
+      perspectives: [
+        { id: "faithful", label: "Faithful Recreation", prompt: "Recreate the requested result faithfully." },
+        { id: "production", label: "Professional Production", prompt: "Create a production-ready version of the requested result." },
+        { id: "creative", label: "Creative Variation", prompt: "Explore a creative variation while preserving the core intent." },
+      ],
+      intelligence: {
+        intent: "Create a polished onboarding email",
+        outputType: "writing",
+        assumptions: [],
+        missing: [],
+        recommendations: [],
+      },
       quota: {
         plan: "free",
         promptsToday: 1,
@@ -37,6 +50,8 @@ describe("PromptBuilder", () => {
         dailyLimit: 3,
         remaining: 2,
       },
+      creditsRemaining: 10,
+      creditCost: 0,
     });
     mocks.fetchRuntimeProductConfig.mockReset();
     mocks.fetchRuntimeProductConfig.mockResolvedValue({
