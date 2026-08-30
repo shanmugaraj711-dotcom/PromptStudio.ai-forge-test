@@ -7,6 +7,7 @@ import { getUtcDateKey } from "../../constants/quota";
 const mocks = vi.hoisted(() => ({
   auth: null,
   generatePrompt: vi.fn(),
+  fetchRuntimeProductConfig: vi.fn(),
 }));
 
 vi.mock("../../context/AuthContext", () => ({
@@ -15,6 +16,10 @@ vi.mock("../../context/AuthContext", () => ({
 
 vi.mock("../../services/promptGenerator", () => ({
   generatePrompt: mocks.generatePrompt,
+}));
+
+vi.mock("../../services/runtimeProductConfig", () => ({
+  fetchRuntimeProductConfig: mocks.fetchRuntimeProductConfig,
 }));
 
 import PromptBuilder from "./PromptBuilder";
@@ -31,6 +36,16 @@ describe("PromptBuilder", () => {
         quotaVersion: 1,
         dailyLimit: 3,
         remaining: 2,
+      },
+    });
+    mocks.fetchRuntimeProductConfig.mockReset();
+    mocks.fetchRuntimeProductConfig.mockResolvedValue({
+      plans: {
+        free: { dailyPromptLimit: 3 },
+      },
+      creditCosts: {
+        standardGeneration: 2,
+        referenceImageAnalysis: 5,
       },
     });
     mocks.auth = {
