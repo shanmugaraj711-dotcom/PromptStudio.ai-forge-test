@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - prelaunch-full-audit-20260830
+  workflow_dispatch:
 
 jobs:
   test-build:
