@@ -1,3 +1,5 @@
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb, requireUser } from "./_firebaseAdmin.js";
 import generatePromptHandler from "./generate-prompt.js";
 
 // Reference Coding uses the proven fast generation pipeline. The dedicated route
@@ -8,6 +10,7 @@ export default async function handler(req, res) {
   const body = req.body && typeof req.body === "object" ? { ...req.body } : {};
   const images = Array.isArray(body.images) ? body.images : (body.image ? [body.image] : []);
   const files = Array.isArray(body.referenceFiles) ? body.referenceFiles : [];
+  const user = await requireUser(req);
 
   const fileContext = files.length
     ? `\n\nREFERENCE FILES (static context only; never execute):\n${files.map((file) => `- ${file.name || "reference"} | ${file.detectedType || file.kind || "unknown"}${file.content ? `\n${String(file.content).slice(0, 120000)}` : ""}`).join("\n")}`
@@ -27,5 +30,30 @@ export default async function handler(req, res) {
   delete req.body.images;
   delete req.body.referenceFiles;
 
-  return generatePromptHandler(req, res);
+  const result = await generatePromptHandler(req, res);
+
+  // Record telemetry only after the underlying generation endpoint has returned
+  // success. No prompt/reference contents are stored in analytics.
+  if (res.statusCode === 200 && body.requestId) {
+    const db = adminDb();
+    const eventRef = db.collection("referenceCodingEvents").doc(`${user.uid}_${body.requestId}`);
+    await eventRef.set({
+      event: "reference_coding_generation",
+      uid: user.uid,
+      requestId: body.requestId,
+      referenceCount: files.length + (images.length ? 1 : 0),
+      imageReferenceCount: images.length,
+      fileReferenceCount: files.length,
+      referenceKinds: files.map((file) => String(file.detectedType || file.kind || "unknown")).slice(0, 8),
+      createdAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    await db.collection("users").doc(user.uid).collection("prompts").doc(body.requestId).set({
+      referenceCoding: true,
+      referenceCodingReferenceCount: files.length + (images.length ? 1 : 0),
+      referenceCodingGeneratedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  }
+
+  return result;
 }
