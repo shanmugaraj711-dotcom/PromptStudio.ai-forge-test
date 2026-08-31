@@ -36,7 +36,7 @@ const normalizePath = (value) => {
 export default async function handler(req, res) {
   const requestedPath = normalizePath(req.url);
   const requestedRoute = String(req.query?.route || "").trim();
-  const route = normalizePath(requestedRoute ? `/api/${requestedRoute.replace(/^\\/api\\//, "")}` : requestedPath);
+  const route = normalizePath(requestedRoute ? `/api/${requestedRoute.replace(/^\/api\//, "")}` : requestedPath);
   const staticHandler = STATIC_HANDLERS[route];
 
   if (staticHandler) return await staticHandler(req, res);
