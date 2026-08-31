@@ -36,7 +36,7 @@ const normalizePath = (value) => {
 export default async function handler(req, res) {
   const requestedPath = normalizePath(req.url);
   const requestedRoute = String(req.query?.route || "").trim();
-  const route = normalizePath(requestedRoute ? `/api/${requestedRoute.replace(/^\/api\//, "")}` : requestedPath);
+  const route = normalizePath(requestedRoute ? `/api/${requestedRoute.replace(/^\\/api\\//, "")}` : requestedPath);
   const staticHandler = STATIC_HANDLERS[route];
 
   if (staticHandler) return await staticHandler(req, res);
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     if (typeof target !== "function") throw new Error("API module does not export a default handler.");
     return await target(req, res);
   } catch (error) {
-    console.error("PromptStudio API gateway failed", { route, code: error?.code || "unknown" });
+    console.error("PromptStudio API gateway failed", { route, code: error?.code || "unknown", message: error?.message, stack: error?.stack });
     if (!res.headersSent) {
       res.statusCode = Number(error?.status) || 500;
       res.setHeader("Content-Type", "application/json; charset=utf-8");
