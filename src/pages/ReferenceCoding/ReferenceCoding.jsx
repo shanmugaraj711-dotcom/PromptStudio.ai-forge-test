@@ -1,9 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import ResultCard from '../Result/ResultCard';
 import { useAuth } from '../../context/AuthContext';
+import { createQuotaState } from '../../constants/quota';
+import { fetchRuntimeProductConfig } from '../../services/runtimeProductConfig';
+import CreditBadge from '../../components/layout/CreditBadge';
 import { generateReferenceCoding, createRequestId } from '../../services/referenceCoding';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -101,7 +104,8 @@ const examples = [
 
 export default function ReferenceCoding() {
   const inputRef = useRef(null);
-  const { user, loginWithGoogle, updateQuotaState } = useAuth();
+  const { user, userProfile, plan, promptsToday, lastPromptDate, loginWithGoogle, updateQuotaState } = useAuth();
+  const [productConfig, setProductConfig] = useState(null);
   const [idea, setIdea] = useState('');
   const [images, setImages] = useState([]);
   const [referenceFiles, setReferenceFiles] = useState([]);
@@ -110,6 +114,27 @@ export default function ReferenceCoding() {
   const [isPreparing, setIsPreparing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchRuntimeProductConfig(user).then((config) => { if (active) setProductConfig(config); }).catch((error) => console.error('Unable to load runtime product config', error));
+    return () => { active = false; };
+  }, [user]);
+
+  const quota = createQuotaState(
+    {
+      plan,
+      promptsToday,
+      lastPromptDate,
+      imageAnalysesToday: userProfile?.imageAnalysesToday,
+      lastImageAnalysisDate: userProfile?.lastImageAnalysisDate,
+      imageAnalysesThisMonth: userProfile?.imageAnalysesThisMonth,
+      lastImageAnalysisMonth: userProfile?.lastImageAnalysisMonth,
+    },
+    new Date(),
+    productConfig
+  );
+  const credits = Math.max(Number(userProfile?.credits || 0), 0);
 
   const handleFiles = async (event) => {
     const files = Array.from(event.target.files || []);
@@ -169,6 +194,7 @@ export default function ReferenceCoding() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-950">
       <Navbar />
+      <CreditBadge quota={quota} credits={credits} />
       <main>
         <section className="relative overflow-hidden bg-white">
           <div className="pointer-events-none absolute -left-32 top-0 h-72 w-72 rounded-full bg-indigo-100/70 blur-3xl" />
