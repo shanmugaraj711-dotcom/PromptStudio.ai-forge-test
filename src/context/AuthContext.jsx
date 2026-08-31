@@ -41,19 +41,48 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const latestQuotaRef = useRef({ quotaVersion: -1 });
 
-  const updateQuotaState = useCallback((quota) => {
+  const updateQuotaState = useCallback((quota, credits = null) => {
     if (!quota) return;
 
     const nextQuota = quotaFromProfile(quota);
     const latestQuota = latestQuotaRef.current;
 
-    if (!isQuotaAtLeastAsNew(nextQuota, latestQuota)) {
-      return;
+    const isNew = isQuotaAtLeastAsNew(nextQuota, latestQuota);
+    if (isNew) {
+      latestQuotaRef.current = nextQuota;
     }
 
-    latestQuotaRef.current = nextQuota;
-    setUserProfile((profile) => mergeProfileWithQuota(profile, nextQuota));
+    setUserProfile((profile) => {
+      if (!profile) return null;
+      let nextProfile = profile;
+      if (isNew) {
+        nextProfile = mergeProfileWithQuota(nextProfile, nextQuota);
+      }
+      if (credits !== null) {
+        nextProfile = { ...nextProfile, credits };
+      }
+      return nextProfile;
+    });
   }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+    try {
+      const profile = await getUserProfile(user.uid);
+      if (profile) {
+        const snapshotQuota = quotaFromProfile(profile);
+        const latestQuota = latestQuotaRef.current;
+        if (isQuotaAtLeastAsNew(snapshotQuota, latestQuota)) {
+          latestQuotaRef.current = snapshotQuota;
+          setUserProfile(profile);
+        } else {
+          setUserProfile(mergeProfileWithQuota(profile, latestQuota));
+        }
+      }
+    } catch (error) {
+      console.error("Manual profile refresh failed:", error);
+    }
+  }, [user]);
 
   useEffect(() => {
     let active = true;
@@ -128,6 +157,7 @@ export const AuthProvider = ({ children }) => {
     lastPromptDate: quota.lastPromptDate,
     loading,
     updateQuotaState,
+    refreshProfile,
 
     signup: registerWithEmail,
     login: loginWithEmail,

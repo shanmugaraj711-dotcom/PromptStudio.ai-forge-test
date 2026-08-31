@@ -28,10 +28,12 @@ export const usePromptTemplates = () => {
     // Reusable templates are Pro-only. Free users must not query the protected
     // Firestore collection, which would otherwise produce a permission error.
     if (plan !== "pro") {
-      setTemplates([]);
-      setLoadedUserId(userId);
-      setError("");
-      return undefined;
+      const timer = setTimeout(() => {
+        setTemplates([]);
+        setLoadedUserId(userId);
+        setError("");
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const unsubscribe = subscribeToPromptTemplates(userId, (items) => {

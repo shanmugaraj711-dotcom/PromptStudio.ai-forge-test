@@ -85,10 +85,10 @@ export function usePromptBuilder() {
       setHistoryId(result.historyId || "");
       setPerspectives(result.perspectives || []);
       setIntelligence(result.intelligence || null);
-      updateQuotaState(result.quota);
+      updateQuotaState(result.quota, result.creditsRemaining);
     } catch (err) {
       console.error("Failed to generate prompt:", err);
-      if (err.quota) updateQuotaState(err.quota);
+      if (err.quota) updateQuotaState(err.quota, err.creditsRemaining);
       setError(err.message || "Unable to generate a prompt. Please try again.");
     } finally {
       requestInFlightRef.current = false;

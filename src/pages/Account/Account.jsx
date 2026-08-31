@@ -6,9 +6,10 @@ import { PRICING_PLANS } from "../../constants/pricingPlans";
 import PRODUCT_CONFIG from "../../config/product.config";
 import { fetchRuntimeProductConfig } from "../../services/runtimeProductConfig";
 import { buyCredits, buyCustomCredits, subscribeToPro } from "../../services/razorpay";
+import AccountHeader from "../../components/layout/AccountHeader";
 
 export const Account = () => {
-  const { user, userProfile, logout, plan, promptsToday, lastPromptDate } = useAuth();
+  const { user, userProfile, logout, plan, promptsToday, lastPromptDate, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [busy, setBusy] = useState("");
@@ -56,8 +57,11 @@ export const Account = () => {
     setBusy(key); setError(""); setMessage("");
     try {
       await action();
-      setMessage("Payment verified successfully. Refreshing your PromptStudio account…");
-      window.setTimeout(() => window.location.reload(), 900);
+      setMessage("Payment verified successfully. Your credits and plan are being updated…");
+      // Refresh the profile locally twice to capture eventual consistency from Firestore
+      await refreshProfile();
+      window.setTimeout(() => refreshProfile(), 1500);
+      window.setTimeout(() => setMessage(""), 5000);
     } catch (err) {
       console.error("Payment error:", err);
       setError(err?.message || "Payment could not be completed. Please try again.");
@@ -90,14 +94,15 @@ export const Account = () => {
         {error && <div className="rounded-xl border border-red-500/50 bg-red-950/80 p-4 text-sm text-red-200">⚠️ {error}</div>}
         {message && <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/60 p-4 text-sm text-emerald-200">✓ {message}</div>}
 
-        <div className="rounded-3xl border border-gray-800 bg-gray-900 p-6 shadow-2xl sm:p-8">
-          <div className="flex flex-col items-center gap-4 border-b border-gray-800 pb-7 sm:flex-row sm:gap-6"><img src={photoURL} alt={displayName} className="h-20 w-20 rounded-full border-2 border-indigo-500/80 object-cover shadow-lg" /><div className="text-center sm:text-left"><h2 className="text-2xl font-bold text-white">{displayName}</h2><p className="mt-1 text-sm font-mono text-gray-400">{email}</p></div></div>
-          <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-indigo-700/40 bg-indigo-950/30 p-5"><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Current Plan</span><div className="mt-2 text-2xl font-black capitalize text-white">{plan}</div><p className="mt-1 text-xs text-gray-400">{isPro ? `${quota.dailyLimit} prompts daily · ${quota.monthlyImageLimit ?? 0} image prompts monthly` : `${quota.dailyLimit} prompts daily · ${quota.dailyImageLimit ?? 0} image prompt daily`}</p></div>
-            <div className="rounded-2xl border border-gray-700/60 bg-gray-800/40 p-5"><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Today's Usage</span><div className="mt-2 text-2xl font-black text-white">{quota.remaining} / {quota.dailyLimit}</div><p className="mt-1 text-xs text-gray-400">prompts remaining</p></div>
-            <div className="rounded-2xl border border-gray-700/60 bg-gray-800/40 p-5"><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Purchased Credits</span><div className="mt-2 text-2xl font-black text-white">{credits}</div><p className="mt-1 text-xs text-gray-400">Never expire · 2 text / 5 image credits</p></div>
-          </div>
-        </div>
+        <AccountHeader
+          displayName={displayName}
+          email={email}
+          photoURL={photoURL}
+          plan={plan}
+          quota={quota}
+          credits={credits}
+          isPro={isPro}
+        />
 
         <section id="plans" className="scroll-mt-24">
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-400">Plans & pricing</p><h2 className="mt-1 text-2xl font-black text-white">Choose how you want to create</h2></div><span className="text-xs text-gray-500">Simple pricing. No hidden plan tiers.</span></div>

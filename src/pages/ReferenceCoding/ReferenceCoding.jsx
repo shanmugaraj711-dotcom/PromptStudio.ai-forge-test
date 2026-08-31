@@ -1,9 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Navbar from '../../components/layout/Navbar';
 import Footer from '../../components/layout/Footer';
 import Button from '../../components/ui/Button';
 import ResultCard from '../Result/ResultCard';
 import { useAuth } from '../../context/AuthContext';
+import { createQuotaState } from '../../constants/quota';
+import { fetchRuntimeProductConfig } from '../../services/runtimeProductConfig';
+import CreditBadge from '../../components/layout/CreditBadge';
 import { generateReferenceCoding, createRequestId } from '../../services/referenceCoding';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -101,7 +104,8 @@ const examples = [
 
 export default function ReferenceCoding() {
   const inputRef = useRef(null);
-  const { user, loginWithGoogle } = useAuth();
+  const { user, userProfile, plan, promptsToday, lastPromptDate, loginWithGoogle, updateQuotaState } = useAuth();
+  const [productConfig, setProductConfig] = useState(null);
   const [idea, setIdea] = useState('');
   const [images, setImages] = useState([]);
   const [referenceFiles, setReferenceFiles] = useState([]);
@@ -110,6 +114,27 @@ export default function ReferenceCoding() {
   const [isPreparing, setIsPreparing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchRuntimeProductConfig(user).then((config) => { if (active) setProductConfig(config); }).catch((error) => console.error('Unable to load runtime product config', error));
+    return () => { active = false; };
+  }, [user]);
+
+  const quota = createQuotaState(
+    {
+      plan,
+      promptsToday,
+      lastPromptDate,
+      imageAnalysesToday: userProfile?.imageAnalysesToday,
+      lastImageAnalysisDate: userProfile?.lastImageAnalysisDate,
+      imageAnalysesThisMonth: userProfile?.imageAnalysesThisMonth,
+      lastImageAnalysisMonth: userProfile?.lastImageAnalysisMonth,
+    },
+    new Date(),
+    productConfig
+  );
+  const credits = Math.max(Number(userProfile?.credits || 0), 0);
 
   const handleFiles = async (event) => {
     const files = Array.from(event.target.files || []);
@@ -151,10 +176,16 @@ export default function ReferenceCoding() {
       const referenceImage = await buildReferenceBoard(images);
       const response = await generateReferenceCoding({ idea: idea.trim(), idToken: token, requestId: createRequestId(), images: referenceImage ? [referenceImage] : [], referenceFiles });
       setResult(response);
+      if (response.quota) {
+        updateQuotaState(response.quota, response.creditsRemaining);
+      }
       setMessage('✓ Coding intelligence ready.');
     } catch (err) {
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return;
       setError(err.message || 'Unable to generate the coding prompt.');
+      if (err.quota) {
+        updateQuotaState(err.quota, err.creditsRemaining);
+      }
     } finally { setIsGenerating(false); }
   };
 
@@ -163,6 +194,11 @@ export default function ReferenceCoding() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-950">
       <Navbar />
+      {user && (
+        <div className="mx-auto flex max-w-7xl justify-end px-5 pt-3 sm:px-6">
+          <CreditBadge quota={quota} credits={credits} />
+        </div>
+      )}
       <main>
         <section className="relative overflow-hidden bg-white">
           <div className="pointer-events-none absolute -left-32 top-0 h-72 w-72 rounded-full bg-indigo-100/70 blur-3xl" />
@@ -180,7 +216,7 @@ export default function ReferenceCoding() {
         <section className="mx-auto max-w-7xl px-5 pb-16 sm:px-6">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
             <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_30px_90px_-55px_rgba(15,23,42,0.35)] sm:p-7">
-              <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">01 · Your change</p><h2 className="mt-2 text-2xl font-black tracking-tight">What do you want to build?</h2></div><span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500">{totalReferences}/8 references</span></div>
+              <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">01 · Your change</p><h2 className="mt-2 text-2xl font-black tracking-tight">What do you want to build?</h2></div><span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500">References · {totalReferences} of 8</span></div>
               <textarea id="coding-idea" value={idea} onChange={(event) => setIdea(event.target.value)} rows={6} disabled={isGenerating || isPreparing} placeholder="Example: This is our existing dashboard. Improve the UX, keep the business logic intact, make mobile navigation easier, and add a search tab without changing the current visual identity." className="mt-4 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-50" />
               <div className="mt-3 flex flex-wrap gap-2">{examples.map(([title, text]) => <button key={title} type="button" onClick={() => useExample(text)} className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700">{title} ↗</button>)}</div>
 

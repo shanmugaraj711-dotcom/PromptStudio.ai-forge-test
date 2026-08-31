@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
+import { useAuth } from '../../context/AuthContext';
 
 const navLinks = [
   { label: 'Features', href: '#features' },
@@ -11,6 +12,7 @@ const navLinks = [
 function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 8);
@@ -47,14 +49,24 @@ function Navbar() {
         </div>
 
         <div className="hidden md:flex md:items-center md:gap-3">
-          <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 hover:text-gray-900">
-            Log in
-          </Link>
-          <Link to="/signup">
-            <Button variant="primary" size="md">
-              Start Free
-            </Button>
-          </Link>
+          {user ? (
+            <Link to="/dashboard">
+              <Button variant="primary" size="md">
+                Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/login" className="rounded-lg px-3 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 hover:text-gray-900">
+                Log in
+              </Link>
+              <Link to="/signup">
+                <Button variant="primary" size="md">
+                  Start Free
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -87,15 +99,25 @@ function Navbar() {
                 {link.label}
               </a>
             ))}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <Link to="/login" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700">
-                Log in
-              </Link>
-              <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="primary" size="md" className="w-full">
-                  Start Free
-                </Button>
-              </Link>
+            <div className={`grid ${user ? 'grid-cols-1' : 'grid-cols-2'} gap-3 pt-2`}>
+              {user ? (
+                <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="primary" size="md" className="w-full">
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/login" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700">
+                    Log in
+                  </Link>
+                  <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="primary" size="md" className="w-full">
+                      Start Free
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

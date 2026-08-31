@@ -52,7 +52,7 @@ describe("usePromptBuilder", () => {
     });
 
     expect(result.current.generatedPrompt).toBe("A server-generated prompt");
-    expect(mocks.auth.updateQuotaState).toHaveBeenCalledWith(quota);
+    expect(mocks.auth.updateQuotaState).toHaveBeenCalledWith(quota, undefined);
     expect(mocks.generatePrompt).toHaveBeenCalledWith(
       expect.objectContaining({
         idea: "Write a thoughtful launch announcement",
@@ -115,6 +115,6 @@ describe("usePromptBuilder", () => {
     });
 
     expect(result.current.error).toBe("The AI service could not generate a prompt.");
-    expect(mocks.auth.updateQuotaState).toHaveBeenCalledWith(restoredQuota);
+    expect(mocks.auth.updateQuotaState).toHaveBeenCalledWith(restoredQuota, undefined);
   });
 });
