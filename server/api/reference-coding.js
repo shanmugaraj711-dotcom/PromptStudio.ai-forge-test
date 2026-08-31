@@ -4,8 +4,6 @@ import generatePromptHandler from "./generate-prompt.js";
 
 const REFERENCE_CODING_CREDIT_COST = 5;
 
-// Reference Coding uses the proven fast generation pipeline. The dedicated route
-// normalizes coding references into the existing authenticated/quota-safe contract.
 const deductReferenceCodingCredits = async ({ db, uid, requestId }) => {
   const userRef = db.collection("users").doc(uid);
   const ledgerRef = userRef.collection("creditLedger").doc(requestId);
@@ -42,6 +40,8 @@ const refundReferenceCodingCredits = async ({ db, uid, requestId }) => {
   });
 };
 
+// Reference Coding uses the proven fast generation pipeline. The dedicated route
+// normalizes coding references into the existing authenticated/quota-safe contract.
 export default async function handler(req, res) {
   if (req.method !== "POST") return generatePromptHandler(req, res);
 
