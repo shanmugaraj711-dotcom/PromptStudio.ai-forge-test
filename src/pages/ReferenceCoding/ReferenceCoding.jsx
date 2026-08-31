@@ -231,7 +231,7 @@ export default function ReferenceCoding() {
                 {!totalReferences && <div className="mt-5 rounded-2xl border border-white/80 bg-white/70 p-5 text-center"><div className="text-3xl">🖼️ ＋ 📄 ＋ 💻</div><p className="mt-2 text-sm font-bold text-slate-700">Drop the evidence. Describe the change. Let AI connect the two.</p><p className="mt-1 text-xs text-slate-500">Best results: 1–4 screenshots + a clear intention.</p></div>}
               </div>
 
-              {(message || error) && <div className={`mt-4 rounded-2xl border p-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`} role="status">{error || message}</div>}
+              {(message || error) && <div className={`mt-4 rounded-2xl border p-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`} role="status">{error || message}{error?.includes('Reference Coding requires') && <a href="/account#plans" className="ml-3 inline-flex items-center rounded-lg bg-red-600 px-3 py-1.5 text-xs font-black text-white transition hover:bg-red-500">Get credits →</a>}</div>}
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><Button variant="primary" size="lg" type="button" onClick={generate} disabled={isPreparing || isGenerating}>{isGenerating ? (user ? 'Analyzing references…' : 'Signing in…') : 'Generate Coding Prompt →'}</Button><p className="text-xs text-slate-500">Reference + intention → implementation prompt</p></div>
             </section>
 
