@@ -194,7 +194,9 @@ export default function ReferenceCoding() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-950">
       <Navbar />
-      <CreditBadge quota={quota} credits={credits} />
+      <div className="mx-auto flex max-w-7xl justify-end px-5 pt-3 sm:px-6">
+        <CreditBadge quota={quota} credits={credits} />
+      </div>
       <main>
         <section className="relative overflow-hidden bg-white">
           <div className="pointer-events-none absolute -left-32 top-0 h-72 w-72 rounded-full bg-indigo-100/70 blur-3xl" />
