@@ -9,7 +9,7 @@ import { buyCredits, buyCustomCredits, subscribeToPro } from "../../services/raz
 import AccountHeader from "../../components/layout/AccountHeader";
 
 export const Account = () => {
-  const { user, userProfile, logout, plan, promptsToday, lastPromptDate } = useAuth();
+  const { user, userProfile, logout, plan, promptsToday, lastPromptDate, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [busy, setBusy] = useState("");
@@ -57,8 +57,11 @@ export const Account = () => {
     setBusy(key); setError(""); setMessage("");
     try {
       await action();
-      setMessage("Payment verified successfully. Refreshing your PromptStudio account…");
-      window.setTimeout(() => window.location.reload(), 900);
+      setMessage("Payment verified successfully. Your credits and plan are being updated…");
+      // Refresh the profile locally twice to capture eventual consistency from Firestore
+      await refreshProfile();
+      window.setTimeout(() => refreshProfile(), 1500);
+      window.setTimeout(() => setMessage(""), 5000);
     } catch (err) {
       console.error("Payment error:", err);
       setError(err?.message || "Payment could not be completed. Please try again.");
