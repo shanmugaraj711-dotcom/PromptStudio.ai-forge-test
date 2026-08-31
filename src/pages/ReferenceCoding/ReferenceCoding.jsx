@@ -101,7 +101,7 @@ const examples = [
 
 export default function ReferenceCoding() {
   const inputRef = useRef(null);
-  const { user, loginWithGoogle } = useAuth();
+  const { user, loginWithGoogle, updateQuotaState } = useAuth();
   const [idea, setIdea] = useState('');
   const [images, setImages] = useState([]);
   const [referenceFiles, setReferenceFiles] = useState([]);
@@ -151,10 +151,16 @@ export default function ReferenceCoding() {
       const referenceImage = await buildReferenceBoard(images);
       const response = await generateReferenceCoding({ idea: idea.trim(), idToken: token, requestId: createRequestId(), images: referenceImage ? [referenceImage] : [], referenceFiles });
       setResult(response);
+      if (response.quota) {
+        updateQuotaState(response.quota, response.creditsRemaining);
+      }
       setMessage('✓ Coding intelligence ready.');
     } catch (err) {
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return;
       setError(err.message || 'Unable to generate the coding prompt.');
+      if (err.quota) {
+        updateQuotaState(err.quota, err.creditsRemaining);
+      }
     } finally { setIsGenerating(false); }
   };
 
