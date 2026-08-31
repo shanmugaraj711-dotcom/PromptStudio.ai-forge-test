@@ -8,7 +8,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('firebase-admin/firestore', () => ({
-  FieldValue: { serverTimestamp: mocks.serverTimestamp },
+  FieldValue: {
+    serverTimestamp: mocks.serverTimestamp,
+    increment: (n) => ({ __increment: n }),
+  },
 }));
 vi.mock('../../server/api/_firebaseAdmin.js', () => ({
   adminDb: mocks.adminDb,
@@ -23,11 +26,34 @@ import handler from '../../server/api/reference-coding.js';
 describe('reference-coding telemetry', () => {
   let telemetryRows;
   let promptRows;
+  let userDocs;
+  let ledgerDocs;
   let db;
+
+  const makeUserRef = (uid) => ({
+    __type: 'userRef',
+    uid,
+    collection: vi.fn((subName) => {
+      if (subName === 'creditLedger') {
+        return { doc: vi.fn((id) => ({ __type: 'ledgerRef', uid, requestId: id })) };
+      }
+      if (subName === 'prompts') {
+        return {
+          doc: vi.fn((id) => ({
+            set: vi.fn(async (value) => promptRows.set(`${uid}_${id}`, value)),
+          })),
+        };
+      }
+      throw new Error(`Unexpected subcollection: ${subName}`);
+    }),
+  });
 
   beforeEach(() => {
     telemetryRows = new Map();
     promptRows = new Map();
+    userDocs = new Map([['test-user', { credits: 100 }]]);
+    ledgerDocs = new Map();
+
     db = {
       collection: vi.fn((name) => {
         if (name === 'referenceCodingEvents') {
@@ -38,17 +64,35 @@ describe('reference-coding telemetry', () => {
           };
         }
         if (name === 'users') {
-          return {
-            doc: vi.fn((uid) => ({
-              collection: vi.fn(() => ({
-                doc: vi.fn((id) => ({
-                  set: vi.fn(async (value) => promptRows.set(`${uid}_${id}`, value)),
-                })),
-              })),
-            })),
-          };
+          return { doc: vi.fn((uid) => makeUserRef(uid)) };
         }
         throw new Error(`Unexpected collection: ${name}`);
+      }),
+      runTransaction: vi.fn(async (callback) => {
+        const transaction = {
+          get: vi.fn(async (ref) => {
+            if (ref.__type === 'userRef') {
+              const data = userDocs.get(ref.uid);
+              return { exists: !!data, data: () => data };
+            }
+            if (ref.__type === 'ledgerRef') {
+              const data = ledgerDocs.get(`${ref.uid}_${ref.requestId}`);
+              return { exists: !!data, data: () => data };
+            }
+            throw new Error('Unknown ref in transaction.get');
+          }),
+          set: vi.fn((ref, value, options) => {
+            if (ref.__type === 'userRef') {
+              const existing = userDocs.get(ref.uid) || {};
+              userDocs.set(ref.uid, options?.merge ? { ...existing, ...value } : value);
+            } else if (ref.__type === 'ledgerRef') {
+              const key = `${ref.uid}_${ref.requestId}`;
+              const existing = ledgerDocs.get(key) || {};
+              ledgerDocs.set(key, options?.merge ? { ...existing, ...value } : value);
+            }
+          }),
+        };
+        return callback(transaction);
       }),
     };
     mocks.adminDb.mockReturnValue(db);
@@ -89,8 +133,8 @@ describe('reference-coding telemetry', () => {
 
     expect(res.statusCode).toBe(502);
     expect(telemetryRows.size).toBe(before);
+    expect(promptRows.size).toBe(0);
     expect(db.collection).not.toHaveBeenCalledWith('referenceCodingEvents');
-    expect(db.collection).not.toHaveBeenCalledWith('users');
   });
 
   it('adds one telemetry row only after a successful generation', async () => {
@@ -134,5 +178,6 @@ describe('reference-coding telemetry', () => {
       fileReferenceCount: 1,
     });
     expect(promptRows.size).toBe(1);
+    expect(userDocs.get('test-user').credits).toBe(95);
   });
 });
