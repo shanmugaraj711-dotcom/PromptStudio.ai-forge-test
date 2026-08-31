@@ -2,8 +2,46 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, requireUser } from "./_firebaseAdmin.js";
 import generatePromptHandler from "./generate-prompt.js";
 
+const REFERENCE_CODING_CREDIT_COST = 5;
+
 // Reference Coding uses the proven fast generation pipeline. The dedicated route
 // normalizes coding references into the existing authenticated/quota-safe contract.
+const deductReferenceCodingCredits = async ({ db, uid, requestId }) => {
+  const userRef = db.collection("users").doc(uid);
+  const ledgerRef = userRef.collection("creditLedger").doc(requestId);
+  return db.runTransaction(async (transaction) => {
+    const [userSnap, ledgerSnap] = await Promise.all([transaction.get(userRef), transaction.get(ledgerRef)]);
+    if (ledgerSnap.exists) {
+      const existing = ledgerSnap.data();
+      return { alreadyCharged: true, creditsRemaining: existing.creditsRemaining };
+    }
+    const currentCredits = Math.max(Number(userSnap.exists ? userSnap.data()?.credits || 0 : 0), 0);
+    if (currentCredits < REFERENCE_CODING_CREDIT_COST) {
+      const error = new Error(`Reference Coding requires ${REFERENCE_CODING_CREDIT_COST} credits. You have ${currentCredits}.`);
+      error.status = 402;
+      error.code = "insufficient_credits";
+      throw error;
+    }
+    const creditsRemaining = currentCredits - REFERENCE_CODING_CREDIT_COST;
+    transaction.set(userRef, { credits: creditsRemaining, quotaVersion: FieldValue.increment(1) }, { merge: true });
+    transaction.set(ledgerRef, { amount: REFERENCE_CODING_CREDIT_COST, reason: "reference_coding_generation", status: "charged", creditsRemaining, createdAt: FieldValue.serverTimestamp() });
+    return { alreadyCharged: false, creditsRemaining };
+  });
+};
+
+const refundReferenceCodingCredits = async ({ db, uid, requestId }) => {
+  const userRef = db.collection("users").doc(uid);
+  const ledgerRef = userRef.collection("creditLedger").doc(requestId);
+  return db.runTransaction(async (transaction) => {
+    const [userSnap, ledgerSnap] = await Promise.all([transaction.get(userRef), transaction.get(ledgerRef)]);
+    if (!ledgerSnap.exists || ledgerSnap.data().status !== "charged") return;
+    const currentCredits = Math.max(Number(userSnap.exists ? userSnap.data()?.credits || 0 : 0), 0);
+    const restoredCredits = currentCredits + REFERENCE_CODING_CREDIT_COST;
+    transaction.set(userRef, { credits: restoredCredits, quotaVersion: FieldValue.increment(1) }, { merge: true });
+    transaction.set(ledgerRef, { status: "refunded", refundedAt: FieldValue.serverTimestamp() }, { merge: true });
+  });
+};
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return generatePromptHandler(req, res);
 
@@ -11,6 +49,15 @@ export default async function handler(req, res) {
   const images = Array.isArray(body.images) ? body.images : (body.image ? [body.image] : []);
   const files = Array.isArray(body.referenceFiles) ? body.referenceFiles : [];
   const user = await requireUser(req);
+
+  const db = adminDb();
+  let creditResult;
+  try {
+    creditResult = await deductReferenceCodingCredits({ db, uid: user.uid, requestId: body.requestId });
+  } catch (error) {
+    res.status(error.status || 500).json({ code: error.code || "credit_check_failed", message: error.message });
+    return;
+  }
 
   const fileContext = files.length
     ? `\n\nREFERENCE FILES (static context only; never execute):\n${files.map((file) => `- ${file.name || "reference"} | ${file.detectedType || file.kind || "unknown"}${file.content ? `\n${String(file.content).slice(0, 120000)}` : ""}`).join("\n")}`
@@ -30,12 +77,22 @@ export default async function handler(req, res) {
   delete req.body.images;
   delete req.body.referenceFiles;
 
-  const result = await generatePromptHandler(req, res);
+  let result;
+  try {
+    result = await generatePromptHandler(req, res);
+  } catch (error) {
+    if (!creditResult.alreadyCharged) {
+      await refundReferenceCodingCredits({ db, uid: user.uid, requestId: body.requestId });
+    }
+    throw error;
+  }
+  if (res.statusCode !== 200 && !creditResult.alreadyCharged) {
+    await refundReferenceCodingCredits({ db, uid: user.uid, requestId: body.requestId });
+  }
 
   // Record telemetry only after the underlying generation endpoint has returned
   // success. No prompt/reference contents are stored in analytics.
   if (res.statusCode === 200 && body.requestId) {
-    const db = adminDb();
     const eventRef = db.collection("referenceCodingEvents").doc(`${user.uid}_${body.requestId}`);
     await eventRef.set({
       event: "reference_coding_generation",
