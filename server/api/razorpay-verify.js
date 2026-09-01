@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, json, requireUser } from "./_firebaseAdmin.js";
+import { sendCreditPurchaseEmail } from "./_email.js";
 import { isConfigured, razorpayRequest, verifyOrderSignature, verifySubscriptionSignature } from "./_razorpay.js";
 
 const paymentHistory = async (uid) => {
@@ -58,6 +59,34 @@ const applyCredits = async (uid, paymentId, orderId) => {
   });
 };
 
+const sendPurchaseConfirmation = async (uid, email, orderId) => {
+  if (!email || !orderId) return;
+  try {
+    const db = adminDb();
+    const paymentRef = db.collection("paymentOrders").doc(orderId);
+    const userRef = db.collection("users").doc(uid);
+    const [paymentSnap, userSnap] = await Promise.all([paymentRef.get(), userRef.get()]);
+    if (!paymentSnap.exists) return;
+    const payment = paymentSnap.data() || {};
+    if (payment.uid !== uid || payment.fulfilled !== true || payment.receiptEmailSentAt) return;
+    const user = userSnap.exists ? userSnap.data() : {};
+    const result = await sendCreditPurchaseEmail({
+      to: email,
+      amountInr: payment.amountInr,
+      credits: payment.credits,
+      orderId: payment.razorpayOrderId || orderId,
+      paymentId: payment.paymentId,
+      paidAt: payment.paidAt?.toDate?.()?.toISOString?.() || null,
+      balance: user.credits,
+    });
+    if (result.sent) {
+      await paymentRef.set({ receiptEmailSentAt: new Date(), receiptEmailId: result.emailId || null }, { merge: true });
+    }
+  } catch (error) {
+    console.error("PromptStudio purchase email failed", { code: error?.code || "unknown", status: error?.status, message: error?.message });
+  }
+};
+
 const activatePro = async (uid, subscriptionId, billing) => {
   const db = adminDb();
   const userRef = db.collection("users").doc(uid);
@@ -89,6 +118,7 @@ export default async function handler(req, res) {
       if (order.status !== "paid") return json(res, 409, { code: "payment_not_captured", message: "Payment is not captured yet. Please wait a moment and refresh." });
       const orderData = orderSnap.data();
       await applyCredits(decoded.uid, body.razorpay_payment_id, body.razorpay_order_id);
+      await sendPurchaseConfirmation(decoded.uid, decoded.email, body.razorpay_order_id);
       return json(res, 200, { ok: true, type: "credit", creditsAdded: orderData.credits, amountInr: orderData.amountInr, orderId: body.razorpay_order_id, paymentId: body.razorpay_payment_id, paidAt: new Date().toISOString() });
     }
     if (body.type === "subscription") {
