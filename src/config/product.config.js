@@ -21,6 +21,7 @@ export const PRODUCT_CONFIG = Object.freeze({
     standardGeneration: 2,
     promptRefinement: 2,
     referenceImageAnalysis: 5,
+    referenceCoding: Object.freeze({ creditCost: 5, maxReferences: 8, maxImages: 4 }),
     advancedOperation: 3,
     heavyOperation: 5,
   }),
