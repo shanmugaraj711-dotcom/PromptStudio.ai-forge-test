@@ -21,7 +21,7 @@ function AIDiscoveryPanel({ category, aiModel, onToolSelect, onExample }) {
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full bg-blue-600 px-3 py-1.5 text-[10px] font-black text-white">🖼️ Image → Prompt</span>
-            <Link to="/reference-coding" className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-[10px] font-black text-indigo-700 transition hover:bg-indigo-50">💻 Reference → Code Prompt →</Link>
+            <a href="/reference-coding" className="rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-[10px] font-black text-indigo-700 transition hover:bg-indigo-50">💻 Reference → Code Prompt →</a>
           </div>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
