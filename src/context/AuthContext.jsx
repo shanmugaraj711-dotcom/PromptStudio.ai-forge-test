@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }) => {
       if (isNew) {
         nextProfile = mergeProfileWithQuota(nextProfile, nextQuota);
       }
-      if (credits !== null) {
+      if (credits != null) {
         nextProfile = { ...nextProfile, credits };
       }
       return nextProfile;
