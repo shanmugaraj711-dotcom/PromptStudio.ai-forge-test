@@ -1,31 +1,41 @@
-import referenceCodingHandler from "../server/api/reference-coding.js";
+import adminBootstrapHandler from "../server/api/admin-bootstrap.js";
+import adminHandler from "../server/api/admin.js";
+import feedbackHandler from "../server/api/feedback.js";
 import generatePromptCreditsHandler from "../server/api/generate-prompt-credits.js";
+import generatePromptHandler from "../server/api/generate-prompt.js";
 import productConfigHandler from "../server/api/product-config.js";
-
-const ROUTES = {
-  "/api/admin-bootstrap": "../server/api/admin-bootstrap.js",
-  "/api/admin": "../server/api/admin.js",
-  "/api/feedback": "../server/api/feedback.js",
-  "/api/generate-prompt-credits": "../server/api/generate-prompt-credits.js",
-  "/api/generate-prompt": "../server/api/generate-prompt.js",
-  "/api/product-config": "../server/api/product-config.js",
-  "/api/razorpay-order": "../server/api/razorpay-order.js",
-  "/api/razorpay-subscription": "../server/api/razorpay-subscription.js",
-  "/api/razorpay-verify": "../server/api/razorpay-verify.js",
-  "/api/razorpay-webhook": "../server/api/razorpay-webhook.js",
-  "/api/share-prompt": "../server/api/share-prompt.js",
-  "/api/support-message": "../server/api/support-message.js",
-  "/api/v1/prompt": "../server/api/v1/prompt.js",
-  "/api/v1/support": "../server/api/v1/support.js",
-  "/api/v1/transactions": "../server/api/v1/transactions.js",
-  "/api/v1/plugin/image-to-prompt": "../server/api/v1/plugin/image-to-prompt.js",
-  "/api/webhooks/whatsapp": "../server/api/webhooks/whatsapp.js"
-};
+import razorpayOrderHandler from "../server/api/razorpay-order.js";
+import razorpaySubscriptionHandler from "../server/api/razorpay-subscription.js";
+import razorpayVerifyHandler from "../server/api/razorpay-verify.js";
+import razorpayWebhookHandler from "../server/api/razorpay-webhook.js";
+import referenceCodingHandler from "../server/api/reference-coding.js";
+import sharePromptHandler from "../server/api/share-prompt.js";
+import supportMessageHandler from "../server/api/support-message.js";
+import v1PromptHandler from "../server/api/v1/prompt.js";
+import v1SupportHandler from "../server/api/v1/support.js";
+import v1TransactionsHandler from "../server/api/v1/transactions.js";
+import v1ImageToPromptHandler from "../server/api/v1/plugin/image-to-prompt.js";
+import whatsappWebhookHandler from "../server/api/webhooks/whatsapp.js";
 
 const STATIC_HANDLERS = {
-  "/api/reference-coding": referenceCodingHandler,
+  "/api/admin-bootstrap": adminBootstrapHandler,
+  "/api/admin": adminHandler,
+  "/api/feedback": feedbackHandler,
   "/api/generate-prompt-credits": generatePromptCreditsHandler,
+  "/api/generate-prompt": generatePromptHandler,
   "/api/product-config": productConfigHandler,
+  "/api/razorpay-order": razorpayOrderHandler,
+  "/api/razorpay-subscription": razorpaySubscriptionHandler,
+  "/api/razorpay-verify": razorpayVerifyHandler,
+  "/api/razorpay-webhook": razorpayWebhookHandler,
+  "/api/reference-coding": referenceCodingHandler,
+  "/api/share-prompt": sharePromptHandler,
+  "/api/support-message": supportMessageHandler,
+  "/api/v1/prompt": v1PromptHandler,
+  "/api/v1/support": v1SupportHandler,
+  "/api/v1/transactions": v1TransactionsHandler,
+  "/api/v1/plugin/image-to-prompt": v1ImageToPromptHandler,
+  "/api/webhooks/whatsapp": whatsappWebhookHandler,
 };
 
 const normalizePath = (value) => {
@@ -37,21 +47,15 @@ export default async function handler(req, res) {
   const requestedPath = normalizePath(req.url);
   const requestedRoute = String(req.query?.route || "").trim();
   const route = normalizePath(requestedRoute ? `/api/${requestedRoute.replace(/^\/api\//, "")}` : requestedPath);
-  const staticHandler = STATIC_HANDLERS[route];
+  const target = STATIC_HANDLERS[route];
 
-  if (staticHandler) return await staticHandler(req, res);
-
-  const modulePath = ROUTES[route];
-  if (!modulePath) {
+  if (!target) {
     res.statusCode = 404;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     return res.end(JSON.stringify({ error: "api_route_not_found" }));
   }
 
   try {
-    const module = await import(new URL(modulePath, import.meta.url).href);
-    const target = module.default;
-    if (typeof target !== "function") throw new Error("API module does not export a default handler.");
     return await target(req, res);
   } catch (error) {
     console.error("PromptStudio API gateway failed", { route, code: error?.code || "unknown", message: error?.message, stack: error?.stack });
