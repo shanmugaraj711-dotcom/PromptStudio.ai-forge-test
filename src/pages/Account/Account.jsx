@@ -21,15 +21,9 @@ export const Account = () => {
   useEffect(() => {
     let active = true;
     if (!user) return () => { active = false; };
-
     fetchRuntimeProductConfig(user)
-      .then((config) => {
-        if (active && config) setRuntimeConfig(config);
-      })
-      .catch((err) => {
-        console.error("Unable to load runtime product configuration:", err);
-      });
-
+      .then((config) => { if (active && config) setRuntimeConfig(config); })
+      .catch((err) => { console.error("Unable to load runtime product configuration:", err); });
     return () => { active = false; };
   }, [user]);
 
@@ -52,13 +46,13 @@ export const Account = () => {
   const isPro = plan === "pro";
   const starterPack = pricing.creditPacks.starter;
   const creatorPack = pricing.creditPacks.creator;
+  const referenceCoding = runtimeConfig?.creditCosts?.referenceCoding || PRODUCT_CONFIG.creditCosts.referenceCoding;
 
   const runPayment = async (key, action) => {
     setBusy(key); setError(""); setMessage("");
     try {
       await action();
       setMessage("Payment verified successfully. Your credits and plan are being updated…");
-      // Refresh the profile locally twice to capture eventual consistency from Firestore
       await refreshProfile();
       window.setTimeout(() => refreshProfile(), 1500);
       window.setTimeout(() => setMessage(""), 5000);
@@ -94,15 +88,7 @@ export const Account = () => {
         {error && <div className="rounded-xl border border-red-500/50 bg-red-950/80 p-4 text-sm text-red-200">⚠️ {error}</div>}
         {message && <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/60 p-4 text-sm text-emerald-200">✓ {message}</div>}
 
-        <AccountHeader
-          displayName={displayName}
-          email={email}
-          photoURL={photoURL}
-          plan={plan}
-          quota={quota}
-          credits={credits}
-          isPro={isPro}
-        />
+        <AccountHeader displayName={displayName} email={email} photoURL={photoURL} plan={plan} quota={quota} credits={credits} isPro={isPro} />
 
         <section id="plans" className="scroll-mt-24">
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-400">Plans & pricing</p><h2 className="mt-1 text-2xl font-black text-white">Choose how you want to create</h2></div><span className="text-xs text-gray-500">Simple pricing. No hidden plan tiers.</span></div>
@@ -119,6 +105,22 @@ export const Account = () => {
                 {isCurrent ? <div className="mt-6 w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-center text-sm font-bold text-gray-400">✓ Current Plan</div> : item.id === "pro" ? <div className="mt-6 space-y-2"><button type="button" disabled={busy !== ""} onClick={() => runPayment("monthly", () => subscribeToPro({ user, billing: "monthly" }))} className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">{busy === "monthly" ? "Opening secure checkout…" : `Upgrade Monthly · ₹${pricing.proMonthlyInr}/month`}</button><button type="button" disabled={busy !== ""} onClick={() => runPayment("annual", () => subscribeToPro({ user, billing: "annual" }))} className="w-full rounded-xl border border-indigo-400/40 bg-indigo-950/50 px-4 py-3 text-sm font-bold text-indigo-200 hover:bg-indigo-900/60 disabled:cursor-not-allowed disabled:opacity-50">{busy === "annual" ? "Opening secure checkout…" : `Best Value · ₹${pricing.proAnnualInr}/year`}</button></div> : <div className="mt-6 space-y-2"><button type="button" disabled={busy !== ""} onClick={() => runPayment("starter", () => buyCredits({ user, packId: "starter" }))} className="w-full rounded-xl border border-indigo-400/40 bg-indigo-950/50 px-4 py-3 text-sm font-bold text-indigo-200 hover:bg-indigo-900/60 disabled:cursor-not-allowed disabled:opacity-50">{busy === "starter" ? "Opening secure checkout…" : `₹${starterPack.priceInr} · ${starterPack.credits} Credits`}</button><button type="button" disabled={busy !== ""} onClick={() => runPayment("creator", () => buyCredits({ user, packId: "creator" }))} className="w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">{busy === "creator" ? "Opening secure checkout…" : `⭐ Best for Image Creators · ₹${creatorPack.priceInr} · ${creatorPack.credits} Credits`}</button></div>}
               </article>;
             })}
+          </div>
+
+          <div className="mt-5 overflow-hidden rounded-2xl border border-teal-500/35 bg-gradient-to-r from-teal-950/60 via-gray-900 to-indigo-950/60 p-6 shadow-xl">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <div className="flex flex-wrap items-center gap-3"><span className="rounded-lg bg-teal-500/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-teal-300">New · Reference Coding</span><span className="text-sm font-bold text-gray-300">💻 Existing product → coding-ready prompt</span></div>
+                <h3 className="mt-3 text-xl font-black text-white">Reference Coding is credit-based</h3>
+                <p className="mt-2 text-sm leading-6 text-gray-400">{referenceCoding.creditCost} credits per generation. Add screenshots, source files or an existing application reference, then describe what you want changed. No separate subscription is required.</p>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-gray-300"><span className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">Up to {referenceCoding.maxReferences} references</span><span className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">Up to {referenceCoding.maxImages} screenshots</span><span className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">Credits never expire</span></div>
+              </div>
+              <div className="w-full shrink-0 rounded-2xl border border-white/10 bg-black/20 p-4 sm:max-w-sm">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-500">How far your packs go</p>
+                <div className="mt-3 grid grid-cols-2 gap-3"><div className="rounded-xl bg-gray-900/80 p-3"><p className="text-xs text-gray-500">₹{starterPack.priceInr}</p><p className="mt-1 text-lg font-black text-white">{Math.floor(starterPack.credits / referenceCoding.creditCost)} runs</p><p className="text-[10px] text-gray-500">{starterPack.credits} credits</p></div><div className="rounded-xl bg-indigo-950/70 p-3"><p className="text-xs text-indigo-300">₹{creatorPack.priceInr}</p><p className="mt-1 text-lg font-black text-white">{Math.floor(creatorPack.credits / referenceCoding.creditCost)} runs</p><p className="text-[10px] text-indigo-300/70">{creatorPack.credits} credits</p></div></div>
+                <button type="button" disabled={busy !== ""} onClick={() => runPayment("creator", () => buyCredits({ user, packId: "creator" }))} className="mt-4 w-full rounded-xl bg-teal-500 px-4 py-3 text-sm font-black text-gray-950 hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50">{busy === "creator" ? "Opening secure checkout…" : `Get ${creatorPack.credits} Credits · ₹${creatorPack.priceInr}`}</button>
+              </div>
+            </div>
           </div>
 
           <div className="mt-5 rounded-2xl border border-violet-500/30 bg-gradient-to-r from-violet-950/50 via-gray-900 to-indigo-950/50 p-5 shadow-xl">
