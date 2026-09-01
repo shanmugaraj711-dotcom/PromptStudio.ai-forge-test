@@ -3,12 +3,6 @@ import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
 import { useAuth } from '../../context/AuthContext';
 
-const navLinks = [
-  { label: 'Features', href: '#features' },
-  { label: 'How it Works', href: '#how-it-works' },
-  { label: 'Pricing', href: '#pricing' },
-];
-
 function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -35,18 +29,6 @@ function Navbar() {
           </span>
           <span className="text-lg font-bold text-gray-900">PromptStudio AI</span>
         </Link>
-
-        <div className="hidden md:flex md:items-center md:gap-10">
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="text-sm font-medium text-gray-600 hover:text-blue-700 transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
 
         <div className="hidden md:flex md:items-center md:gap-3">
           {user ? (
@@ -89,36 +71,24 @@ function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-6 py-4">
           <div className="flex flex-col gap-3">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={() => setIsMenuOpen(false)}
-                className="rounded-lg px-2 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              >
-                {link.label}
-              </a>
-            ))}
-            <div className={`grid ${user ? 'grid-cols-1' : 'grid-cols-2'} gap-3 pt-2`}>
-              {user ? (
-                <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
+            {user ? (
+              <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="primary" size="md" className="w-full">
+                  Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <Link to="/login" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700">
+                  Log in
+                </Link>
+                <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
                   <Button variant="primary" size="md" className="w-full">
-                    Dashboard
+                    Start Free
                   </Button>
                 </Link>
-              ) : (
-                <>
-                  <Link to="/login" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700">
-                    Log in
-                  </Link>
-                  <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="primary" size="md" className="w-full">
-                      Start Free
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
