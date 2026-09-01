@@ -59,36 +59,28 @@ const applyCredits = async (uid, paymentId, orderId) => {
   });
 };
 
-const sendPurchaseConfirmation = async (uid, email) => {
-  if (!email) return;
+const sendPurchaseConfirmation = async (uid, email, orderId) => {
+  if (!email || !orderId) return;
   try {
     const db = adminDb();
+    const paymentRef = db.collection("paymentOrders").doc(orderId);
     const userRef = db.collection("users").doc(uid);
-    const [paymentSnap, userSnap] = await Promise.all([
-      db.collection("paymentOrders").where("uid", "==", uid).get(),
-      userRef.get(),
-    ]);
-    const paidDocs = paymentSnap.docs.filter((doc) => doc.data()?.fulfilled === true).sort((a, b) => {
-      const aTime = a.data()?.paidAt?.toDate?.()?.getTime?.() || 0;
-      const bTime = b.data()?.paidAt?.toDate?.()?.getTime?.() || 0;
-      return bTime - aTime;
-    });
-    const latest = paidDocs[0];
-    if (!latest) return;
-    const payment = latest.data() || {};
-    if (payment.receiptEmailSentAt) return;
+    const [paymentSnap, userSnap] = await Promise.all([paymentRef.get(), userRef.get()]);
+    if (!paymentSnap.exists) return;
+    const payment = paymentSnap.data() || {};
+    if (payment.uid !== uid || payment.fulfilled !== true || payment.receiptEmailSentAt) return;
     const user = userSnap.exists ? userSnap.data() : {};
     const result = await sendCreditPurchaseEmail({
       to: email,
       amountInr: payment.amountInr,
       credits: payment.credits,
-      orderId: payment.razorpayOrderId || latest.id,
+      orderId: payment.razorpayOrderId || orderId,
       paymentId: payment.paymentId,
       paidAt: payment.paidAt?.toDate?.()?.toISOString?.() || null,
       balance: user.credits,
     });
     if (result.sent) {
-      await latest.ref.set({ receiptEmailSentAt: new Date(), receiptEmailId: result.emailId || null }, { merge: true });
+      await paymentRef.set({ receiptEmailSentAt: new Date(), receiptEmailId: result.emailId || null }, { merge: true });
     }
   } catch (error) {
     console.error("PromptStudio purchase email failed", { code: error?.code || "unknown", status: error?.status, message: error?.message });
@@ -126,7 +118,7 @@ export default async function handler(req, res) {
       if (order.status !== "paid") return json(res, 409, { code: "payment_not_captured", message: "Payment is not captured yet. Please wait a moment and refresh." });
       const orderData = orderSnap.data();
       await applyCredits(decoded.uid, body.razorpay_payment_id, body.razorpay_order_id);
-      await sendPurchaseConfirmation(decoded.uid, decoded.email);
+      await sendPurchaseConfirmation(decoded.uid, decoded.email, body.razorpay_order_id);
       return json(res, 200, { ok: true, type: "credit", creditsAdded: orderData.credits, amountInr: orderData.amountInr, orderId: body.razorpay_order_id, paymentId: body.razorpay_payment_id, paidAt: new Date().toISOString() });
     }
     if (body.type === "subscription") {
