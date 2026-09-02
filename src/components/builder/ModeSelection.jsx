@@ -2,8 +2,7 @@ import React from 'react';
 
 const MODES = [
   { id: 'standard', label: 'Standard', icon: '✍️' },
-  { id: 'image', label: 'Image', icon: '🎨' },
-  { id: 'coding', label: 'Coding', icon: '💻' }
+  { id: 'image', label: 'Image', icon: '🎨' }
 ];
 
 export default function ModeSelection({ activeMode, onModeChange, disabled }) {
