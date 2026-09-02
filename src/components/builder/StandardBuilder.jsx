@@ -57,7 +57,7 @@ export default function StandardBuilder({
           <span>Most people don't type their idea — they upload it. Try</span>
           <Link to="/builder?mode=image" className="text-indigo-600 hover:text-indigo-700 hover:underline">Image → Prompt</Link>
           <span className="text-slate-300">or</span>
-          <Link to="/builder?mode=coding" className="text-indigo-600 hover:text-indigo-700 hover:underline">Reference Coding →</Link>
+          <Link to="/reference-coding" className="text-indigo-600 hover:text-indigo-700 hover:underline">Reference Coding →</Link>
         </div>
       </div>
     </>
