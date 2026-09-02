@@ -137,7 +137,6 @@ export default function ReferenceCoding() {
   const [result, setResult] = useState(null);
   const [outputFormat, setOutputFormat] = useState('notsure');
   const [targetAI, setTargetAI] = useState('any');
-  const [copyStatus, setCopyStatus] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -220,15 +219,6 @@ export default function ReferenceCoding() {
       setError(err.message || 'Unable to generate the coding prompt.');
       if (err.quota) updateQuotaState(err.quota, err.creditsRemaining);
     } finally { setIsGenerating(false); }
-  };
-
-  const handleOpenIn = (ai) => {
-    if (!result?.prompt) return;
-    navigator.clipboard.writeText(result.prompt).then(() => {
-      setCopyStatus(`Prompt copied — paste it into ${ai.label}`);
-      setTimeout(() => setCopyStatus(''), 4000);
-      if (ai.url) window.open(ai.url, '_blank', 'noopener,noreferrer');
-    });
   };
 
   const totalReferences = images.length + referenceFiles.length;
@@ -330,7 +320,6 @@ export default function ReferenceCoding() {
 
             <div className="h-px bg-white/10" />
 
-            {/* Output format dropdown */}
             <div>
               <label htmlFor="output-format" className="text-sm sm:text-base font-bold text-white mb-2 block">
                 What should the final code look like?
@@ -348,7 +337,6 @@ export default function ReferenceCoding() {
               <p className="mt-1.5 text-[11px] text-zinc-500">Not sure what to pick? Leave it on "let AI decide" — we'll tell it to choose the best format and explain why.</p>
             </div>
 
-            {/* Target AI selector */}
             <div>
               <span className="text-sm sm:text-base font-bold text-white mb-2 block">Which AI will you paste this into?</span>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -406,24 +394,6 @@ export default function ReferenceCoding() {
         {result && (
           <div className="mt-8">
             <ResultCard prompt={result.prompt} perspectives={result.perspectives} intelligence={result.intelligence} category="coding" userPlan="free" />
-
-            {/* Open in target AI */}
-            <div className="mt-4 rounded-2xl border border-white/10 bg-[#0B0F19] p-4">
-              <p className="text-sm font-bold text-white mb-3">Open this prompt in:</p>
-              <div className="flex flex-wrap gap-2">
-                {TARGET_AIS.filter((ai) => ai.id !== 'any').map((ai) => (
-                  <button
-                    key={ai.id}
-                    type="button"
-                    onClick={() => handleOpenIn(ai)}
-                    className={`px-3 py-2 rounded-lg text-xs font-bold text-white transition ${ai.color} hover:opacity-90`}
-                  >
-                    Open in {ai.label} →
-                  </button>
-                ))}
-              </div>
-              {copyStatus && <p className="mt-3 text-xs text-teal-300">{copyStatus}</p>}
-            </div>
 
             <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-teal-500/20 bg-teal-950/30 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
