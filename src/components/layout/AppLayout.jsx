@@ -46,31 +46,31 @@ export default function AppLayout({ children }) {
               <div className="mt-0.5 hidden text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:block">Creative Intelligence</div>
             </div>
           </Link>
-          <div className="hidden h-8 w-px bg-slate-200 md:block" />
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Primary navigation">
+          <div className="hidden h-8 w-px bg-slate-200 xl:block" />
+          <nav className="hidden items-center gap-1 xl:flex" aria-label="Primary navigation">
             {navItems.map((item) => (
-              <NavLink key={item.to} to={item.to} className={({ isActive }) => `relative whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-bold transition-all duration-200 ${isActive ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}>
+              <NavLink key={item.to} to={item.to} className={({ isActive }) => `relative shrink-0 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-bold transition-all duration-200 ${isActive ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"}`}>
                 {item.label}
               </NavLink>
             ))}
-            <Link to="/contact" className="whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-950">Contact</Link>
+            <Link to="/contact" className="shrink-0 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-950">Contact</Link>
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <button type="button" onClick={() => navigate("/account#plans")} className="group rounded-full border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 px-3 py-2 text-xs font-extrabold text-blue-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md sm:px-4 sm:text-sm" title="View your plan and usage" aria-label={`View usage: ${quotaLabel}`}>
               <span className="mr-1">⚡</span>{quotaLabel}
             </button>
-            <button type="button" onClick={handleLogout} className="hidden rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 sm:inline-flex">Logout</button>
+            <button type="button" onClick={handleLogout} className="hidden rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 xl:inline-flex">Logout</button>
           </div>
         </div>
-        <div className="border-t border-slate-100 md:hidden">
-          <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-3 py-2.5 sm:px-6">
+        <div className="border-t border-slate-100 xl:hidden">
+          <div className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-3 py-2.5 touch-pan-x sm:px-6">
             {navItems.map((item) => (
-              <NavLink key={item.to} to={item.to} className={({ isActive }) => `whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition ${isActive ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+              <NavLink key={item.to} to={item.to} className={({ isActive }) => `shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition ${isActive ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
                 {item.label}
               </NavLink>
             ))}
-            <Link to="/contact" className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100">Contact</Link>
-            <button type="button" onClick={handleLogout} className="ml-auto whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900">Logout</button>
+            <Link to="/contact" className="shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100">Contact</Link>
+            <button type="button" onClick={handleLogout} className="shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900">Logout</button>
           </div>
         </div>
       </header>
