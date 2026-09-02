@@ -129,8 +129,8 @@ div[class*="bg-[#070A11]"] main [class~="text-white"]:not(button *) {
   color: #1e293b !important;
 }
 
-div[class*="bg-[#070A11"]] main textarea,
-div[class*="bg-[#070A11"]] main select {
+div[class*="bg-[#070A11]"] main textarea,
+div[class*="bg-[#070A11]"] main select {
   background: #f8fafc !important;
   color: #1e293b !important;
   border-color: #cbd5e1 !important;
