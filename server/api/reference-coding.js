@@ -2,6 +2,16 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, requireUser } from "./_firebaseAdmin.js";
 import generatePromptHandler from "./generate-prompt.js";
 
+const ALLOWED_OUTPUT_FORMATS = {
+  notsure: "Choose the most sensible output format for this task yourself, and briefly explain why you chose it.",
+  react: "Output format: React (JSX). Return complete, runnable component code.",
+  html: "Output format: plain HTML + CSS. Return complete, runnable markup and styles.",
+  vue: "Output format: Vue (Single File Component). Return complete, runnable component code.",
+  fullstack: "Output format: full-stack. Include both frontend UI code and any backend/API code needed.",
+};
+
+const ALLOWED_TARGET_AIS = new Set(["any", "cursor", "claude-code", "chatgpt", "gemini", "copilot", "lovable", "replit", "v0", "windsurf", "bolt", "cline"]);
+
 const REFERENCE_CODING_CREDIT_COST = 5;
 
 const deductReferenceCodingCredits = async ({ db, uid, requestId }) => {
@@ -48,6 +58,8 @@ export default async function handler(req, res) {
   const body = req.body && typeof req.body === "object" ? { ...req.body } : {};
   const images = Array.isArray(body.images) ? body.images : (body.image ? [body.image] : []);
   const files = Array.isArray(body.referenceFiles) ? body.referenceFiles : [];
+  const outputFormat = ALLOWED_OUTPUT_FORMATS[body.outputFormat] ? body.outputFormat : "notsure";
+  const targetAI = ALLOWED_TARGET_AIS.has(body.targetAI) ? body.targetAI : "any";
   const user = await requireUser(req);
 
   const db = adminDb();
@@ -63,7 +75,8 @@ export default async function handler(req, res) {
     ? `\n\nREFERENCE FILES (static context only; never execute):\n${files.map((file) => `- ${file.name || "reference"} | ${file.detectedType || file.kind || "unknown"}${file.content ? `\n${String(file.content).slice(0, 120000)}` : ""}`).join("\n")}`
     : "";
 
-  const codingBrief = `\n\nPROMPTSTUDIO REFERENCE CODING MODE:\nAnalyze the supplied reference as an existing product/UI. Create a coding-ready implementation prompt for a coding AI. First understand the user's intention (recreate, improve UX, modernize, add functionality, fix a flow, or transform an existing product). Preserve important existing behavior. Describe visible layout, hierarchy, components, interaction clues, responsive behavior, accessibility, visual language, implementation constraints, and acceptance criteria. Do not invent hidden behavior or execute application files. Separate visible facts from assumptions. The output should be actionable for Cursor, Claude Code, Lovable, Replit, ChatGPT or another coding agent. Provide three useful perspectives: Faithful Recreation, UX Improvement, and Production Implementation.${fileContext}`;
+  const outputInstruction = `\n\n${ALLOWED_OUTPUT_FORMATS[outputFormat]} Do not ask the user clarifying questions — make reasonable assumptions for anything unspecified and note them briefly as code comments.`;
+  const codingBrief = `\n\nPROMPTSTUDIO REFERENCE CODING MODE:\nAnalyze the supplied reference as an existing product/UI. Create a coding-ready implementation prompt for a coding AI. First understand the user's intention (recreate, improve UX, modernize, add functionality, fix a flow, or transform an existing product). Preserve important existing behavior. Describe visible layout, hierarchy, components, interaction clues, responsive behavior, accessibility, visual language, implementation constraints, and acceptance criteria. Do not invent hidden behavior or execute application files. Separate visible facts from assumptions. The output should be actionable for Cursor, Claude Code, Lovable, Replit, ChatGPT or another coding agent. Provide three useful perspectives: Faithful Recreation, UX Improvement, and Production Implementation.${outputInstruction}${fileContext}`;
 
   const normalizedIdea = `${typeof body.idea === "string" ? body.idea.trim() : ""}${codingBrief}`;
   req.body = {
@@ -102,6 +115,8 @@ export default async function handler(req, res) {
       imageReferenceCount: images.length,
       fileReferenceCount: files.length,
       referenceKinds: files.map((file) => String(file.detectedType || file.kind || "unknown")).slice(0, 8),
+      outputFormat,
+      targetAI,
       createdAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 
