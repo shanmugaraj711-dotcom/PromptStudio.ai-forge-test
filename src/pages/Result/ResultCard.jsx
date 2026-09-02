@@ -10,7 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import WorkflowProgress from './WorkflowProgress';
 
 function ResultCard({ prompt, perspectives = [], intelligence = null, userPlan = 'free', workflow = null, category = 'writing' }) {
-  const { user } = useAuth();
+  const { user, plan } = useAuth();
   const { createTemplate } = usePromptTemplates();
   const generatedPromptRef = useRef(null);
   const [copyStatus, setCopyStatus] = useState('');
@@ -22,12 +22,13 @@ function ResultCard({ prompt, perspectives = [], intelligence = null, userPlan =
   const [templateName, setTemplateName] = useState('Reusable Prompt');
   const [templateDraft, setTemplateDraft] = useState('');
 
-  const perspectiveAccess = evaluateFeatureAccess('multiPerspectiveGeneration', userPlan);
-  const intentAccess = evaluateFeatureAccess('intentIntelligence', userPlan);
-  const launchAccess = evaluateFeatureAccess('oneClickLaunchButtons', userPlan);
-  const shareAccess = evaluateFeatureAccess('shareablePromptLinks', userPlan);
-  const templateAccess = evaluateFeatureAccess('dynamicVariableFillers', userPlan);
-  const workflowAccess = evaluateFeatureAccess('promptWorkflows', userPlan);
+  const resolvedUserPlan = plan === 'pro' ? 'pro' : userPlan;
+  const perspectiveAccess = evaluateFeatureAccess('multiPerspectiveGeneration', resolvedUserPlan);
+  const intentAccess = evaluateFeatureAccess('intentIntelligence', resolvedUserPlan);
+  const launchAccess = category === 'coding' ? { active: false, allowed: false } : evaluateFeatureAccess('oneClickLaunchButtons', resolvedUserPlan);
+  const shareAccess = evaluateFeatureAccess('shareablePromptLinks', resolvedUserPlan);
+  const templateAccess = evaluateFeatureAccess('dynamicVariableFillers', resolvedUserPlan);
+  const workflowAccess = evaluateFeatureAccess('promptWorkflows', resolvedUserPlan);
   const isImage = category === 'image';
 
   useEffect(() => {
