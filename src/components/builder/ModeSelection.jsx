@@ -1,8 +1,9 @@
 import React from 'react';
 
 const MODES = [
-  { id: 'standard', label: 'Standard', icon: '✍️' },
-  { id: 'image', label: 'Image', icon: '🎨' }
+  { id: 'standard', label: 'Write Prompt', icon: '✍️' },
+  { id: 'image', label: 'Image → Prompt', icon: '🎨' },
+  { id: 'coding', label: 'Reference Coding', icon: '💻' }
 ];
 
 export default function ModeSelection({ activeMode, onModeChange, disabled }) {
@@ -16,10 +17,10 @@ export default function ModeSelection({ activeMode, onModeChange, disabled }) {
           onClick={() => onModeChange(mode.id)}
           className={`
             group relative flex items-center gap-2.5 rounded-2xl px-5 py-3 text-sm font-bold transition-all duration-200
-            ${activeMode === mode.id 
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 ring-2 ring-indigo-600 ring-offset-2' 
-              : 'bg-white text-slate-600 hover:bg-slate-50 hover:text-indigo-600 border border-slate-200 shadow-sm'}
-            disabled:opacity-50 disabled:cursor-not-allowed
+            ${activeMode === mode.id
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 ring-2 ring-indigo-600 ring-offset-2'
+              : 'border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 hover:text-indigo-600'}
+            disabled:cursor-not-allowed disabled:opacity-50
           `}
         >
           <span className={`text-lg transition-transform group-hover:scale-110 ${activeMode === mode.id ? 'scale-110' : ''}`}>
