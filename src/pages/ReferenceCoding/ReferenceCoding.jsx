@@ -14,6 +14,29 @@ const MAX_IMAGES = 4;
 const MAX_REFERENCES = 8;
 const TEXT_TYPES = new Set(['text/plain', 'text/markdown', 'application/json', 'text/html', 'text/css', 'text/javascript', 'application/javascript']);
 
+const OUTPUT_FORMATS = [
+  { id: 'notsure', label: 'Not sure — let AI decide' },
+  { id: 'react', label: 'React (JSX)' },
+  { id: 'html', label: 'HTML + CSS' },
+  { id: 'vue', label: 'Vue' },
+  { id: 'fullstack', label: 'Full-stack (frontend + backend)' },
+];
+
+const TARGET_AIS = [
+  { id: 'any', label: 'Any AI', color: 'bg-zinc-700', url: null },
+  { id: 'cursor', label: 'Cursor', color: 'bg-indigo-600', url: 'https://cursor.com' },
+  { id: 'claude-code', label: 'Claude Code', color: 'bg-orange-600', url: 'https://claude.ai' },
+  { id: 'chatgpt', label: 'ChatGPT', color: 'bg-emerald-600', url: 'https://chat.openai.com' },
+  { id: 'gemini', label: 'Gemini', color: 'bg-blue-600', url: 'https://gemini.google.com' },
+  { id: 'copilot', label: 'GitHub Copilot', color: 'bg-slate-700', url: 'https://github.com/features/copilot' },
+  { id: 'lovable', label: 'Lovable', color: 'bg-pink-600', url: 'https://lovable.dev' },
+  { id: 'replit', label: 'Replit', color: 'bg-orange-700', url: 'https://replit.com' },
+  { id: 'v0', label: 'v0', color: 'bg-zinc-800', url: 'https://v0.dev' },
+  { id: 'windsurf', label: 'Windsurf', color: 'bg-cyan-600', url: 'https://windsurf.com' },
+  { id: 'bolt', label: 'Bolt.new', color: 'bg-amber-600', url: 'https://bolt.new' },
+  { id: 'cline', label: 'Cline', color: 'bg-teal-700', url: 'https://cline.bot' },
+];
+
 const readHead = (file, length = 8) => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onerror = () => reject(new Error('We could not inspect that file.'));
@@ -112,6 +135,9 @@ export default function ReferenceCoding() {
   const [isPreparing, setIsPreparing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
+  const [outputFormat, setOutputFormat] = useState('notsure');
+  const [targetAI, setTargetAI] = useState('any');
+  const [copyStatus, setCopyStatus] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -177,7 +203,15 @@ export default function ReferenceCoding() {
       if (!authenticatedUser) return;
       const token = await authenticatedUser.getIdToken();
       const referenceImage = await buildReferenceBoard(images);
-      const response = await generateReferenceCoding({ idea: idea.trim(), idToken: token, requestId: createRequestId(), images: referenceImage ? [referenceImage] : [], referenceFiles });
+      const response = await generateReferenceCoding({
+        idea: idea.trim(),
+        idToken: token,
+        requestId: createRequestId(),
+        images: referenceImage ? [referenceImage] : [],
+        referenceFiles,
+        outputFormat,
+        targetAI,
+      });
       setResult(response);
       if (response.quota) updateQuotaState(response.quota, response.creditsRemaining);
       setMessage('✓ Coding intelligence ready.');
@@ -186,6 +220,15 @@ export default function ReferenceCoding() {
       setError(err.message || 'Unable to generate the coding prompt.');
       if (err.quota) updateQuotaState(err.quota, err.creditsRemaining);
     } finally { setIsGenerating(false); }
+  };
+
+  const handleOpenIn = (ai) => {
+    if (!result?.prompt) return;
+    navigator.clipboard.writeText(result.prompt).then(() => {
+      setCopyStatus(`Prompt copied — paste it into ${ai.label}`);
+      setTimeout(() => setCopyStatus(''), 4000);
+      if (ai.url) window.open(ai.url, '_blank', 'noopener,noreferrer');
+    });
   };
 
   const totalReferences = images.length + referenceFiles.length;
@@ -285,6 +328,43 @@ export default function ReferenceCoding() {
               </div>
             </div>
 
+            <div className="h-px bg-white/10" />
+
+            {/* Output format dropdown */}
+            <div>
+              <label htmlFor="output-format" className="text-sm sm:text-base font-bold text-white mb-2 block">
+                What should the final code look like?
+              </label>
+              <select
+                id="output-format"
+                value={outputFormat}
+                onChange={(e) => setOutputFormat(e.target.value)}
+                className="w-full text-xs sm:text-sm bg-zinc-950/70 border border-white/10 rounded-xl p-3 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-400"
+              >
+                {OUTPUT_FORMATS.map((fmt) => (
+                  <option key={fmt.id} value={fmt.id}>{fmt.label}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-[11px] text-zinc-500">Not sure what to pick? Leave it on "let AI decide" — we'll tell it to choose the best format and explain why.</p>
+            </div>
+
+            {/* Target AI selector */}
+            <div>
+              <span className="text-sm sm:text-base font-bold text-white mb-2 block">Which AI will you paste this into?</span>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {TARGET_AIS.map((ai) => (
+                  <button
+                    key={ai.id}
+                    type="button"
+                    onClick={() => setTargetAI(ai.id)}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-[11px] font-bold text-white transition ${ai.color} ${targetAI === ai.id ? 'ring-2 ring-teal-300 scale-[1.03]' : 'opacity-70 hover:opacity-100'}`}
+                  >
+                    {ai.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {(message || error) && (
               <div className={`rounded-xl border p-3 text-sm ${error ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-emerald-500/30 bg-emerald-950/30 text-emerald-300'}`} role="status">
                 {error || message}
@@ -326,6 +406,25 @@ export default function ReferenceCoding() {
         {result && (
           <div className="mt-8">
             <ResultCard prompt={result.prompt} perspectives={result.perspectives} intelligence={result.intelligence} category="coding" userPlan="free" />
+
+            {/* Open in target AI */}
+            <div className="mt-4 rounded-2xl border border-white/10 bg-[#0B0F19] p-4">
+              <p className="text-sm font-bold text-white mb-3">Open this prompt in:</p>
+              <div className="flex flex-wrap gap-2">
+                {TARGET_AIS.filter((ai) => ai.id !== 'any').map((ai) => (
+                  <button
+                    key={ai.id}
+                    type="button"
+                    onClick={() => handleOpenIn(ai)}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold text-white transition ${ai.color} hover:opacity-90`}
+                  >
+                    Open in {ai.label} →
+                  </button>
+                ))}
+              </div>
+              {copyStatus && <p className="mt-3 text-xs text-teal-300">{copyStatus}</p>}
+            </div>
+
             <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-teal-500/20 bg-teal-950/30 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-black text-white">Need more credits?</p>
