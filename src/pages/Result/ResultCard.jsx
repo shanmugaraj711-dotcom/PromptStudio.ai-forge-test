@@ -9,7 +9,7 @@ import { usePromptTemplates, extractPromptVariables } from '../../hooks/usePromp
 import { useAuth } from '../../context/AuthContext';
 import WorkflowProgress from './WorkflowProgress';
 
-function ResultCard({ prompt, perspectives = [], intelligence = null, userPlan = 'free', workflow = null, category = 'writing' }) {
+function ResultCard({ prompt, perspectives = [], intelligence = null, userPlan = 'free', workflow = null, category = 'writing', targetAI = 'any' }) {
   const { user, plan } = useAuth();
   const { createTemplate } = usePromptTemplates();
   const generatedPromptRef = useRef(null);
@@ -26,6 +26,8 @@ function ResultCard({ prompt, perspectives = [], intelligence = null, userPlan =
   const perspectiveAccess = evaluateFeatureAccess('multiPerspectiveGeneration', resolvedUserPlan);
   const intentAccess = evaluateFeatureAccess('intentIntelligence', resolvedUserPlan);
   const launchAccess = category === 'coding' ? { active: false, allowed: false } : evaluateFeatureAccess('oneClickLaunchButtons', resolvedUserPlan);
+  const selectedAITarget = category === 'coding' ? AI_LAUNCH_TARGETS.find((item) => item.id === targetAI) : null;
+  const codingLaunchAllowed = category === 'coding' && Boolean(selectedAITarget && selectedAITarget.id !== 'any');
   const shareAccess = evaluateFeatureAccess('shareablePromptLinks', resolvedUserPlan);
   const templateAccess = evaluateFeatureAccess('dynamicVariableFillers', resolvedUserPlan);
   const workflowAccess = evaluateFeatureAccess('promptWorkflows', resolvedUserPlan);
@@ -65,7 +67,8 @@ function ResultCard({ prompt, perspectives = [], intelligence = null, userPlan =
   };
 
   const handleLaunch = async (targetId) => {
-    if (!launchAccess.allowed) return;
+    const canLaunch = category === 'coding' ? codingLaunchAllowed : launchAccess.allowed;
+    if (!canLaunch) return;
     const target = AI_LAUNCH_TARGETS.find((item) => item.id === targetId);
     const targetLabel = target?.label || 'AI';
     setLaunchStatus(`Opening ${targetLabel}…`);
@@ -133,7 +136,7 @@ function ResultCard({ prompt, perspectives = [], intelligence = null, userPlan =
 
   return (
     <div className={`relative overflow-hidden rounded-[1.5rem] border p-5 shadow-[0_28px_80px_-40px_rgba(37,99,235,0.4)] sm:rounded-[2rem] sm:p-8 lg:p-10 ${isImage ? 'border-violet-200 bg-gradient-to-b from-white via-violet-50/30 to-sky-50/50' : 'border-blue-100 bg-white'}`}>
-      {(launchStatus || shareStatus || templateStatus) && (launchAccess.allowed || shareAccess.allowed || templateAccess.allowed) && (
+      {(launchStatus || shareStatus || templateStatus) && (launchAccess.allowed || codingLaunchAllowed || shareAccess.allowed || templateAccess.allowed) && (
         <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 shadow-lg" role="status" aria-live="polite">
           {launchStatus || shareStatus || templateStatus}
         </div>
@@ -148,8 +151,9 @@ function ResultCard({ prompt, perspectives = [], intelligence = null, userPlan =
         <div className="flex flex-wrap gap-2">
           {templateAccess.active && <Button variant="secondary" size="sm" disabled={!templateAccess.allowed} onClick={openTemplateForm}>{templateAccess.allowed ? 'Save as Template' : 'Save Template · PRO'}</Button>}
           {shareAccess.active && <Button variant="secondary" size="sm" disabled={!shareAccess.allowed} onClick={handleShare}>{shareAccess.allowed ? 'Share Link' : 'Share Link · PRO'}</Button>}
+          {codingLaunchAllowed && <Button variant="primary" size="sm" onClick={() => handleLaunch(selectedAITarget.id)}>Open in {selectedAITarget.label} ↗</Button>}
           <Button variant="secondary" size="sm" onClick={handleCopy}>
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2v8a2 2 0 00-2-2v8a2 2 0 002 2v2z" /></svg>
             {copyStatus === 'Copied to clipboard' ? 'Copied!' : 'Copy Prompt'}
           </Button>
         </div>
