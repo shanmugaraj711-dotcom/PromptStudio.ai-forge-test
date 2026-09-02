@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import Select from '../ui/Select';
 import TextArea from '../ui/TextArea';
 import AIDiscoveryPanel from './AIDiscoveryPanel';
@@ -47,11 +48,17 @@ export default function StandardBuilder({
           label="Your idea"
           value={idea}
           onChange={(e) => setIdea(e.target.value)}
-          placeholder="What do you want AI to create? You can also attach a reference image below."
+          placeholder="What do you want AI to create?"
           rows={6}
           error={error}
           disabled={isGenerating || isPreparingImage}
         />
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 text-[11px] font-medium text-slate-500">
+          <span>Have an image or UI reference instead?</span>
+          <Link to="/builder?mode=image" className="text-indigo-600 hover:text-indigo-700 hover:underline">Try Image → Prompt</Link>
+          <span className="text-slate-300">or</span>
+          <Link to="/builder?mode=coding" className="text-indigo-600 hover:text-indigo-700 hover:underline">Reference Coding</Link>
+        </div>
       </div>
     </>
   );
