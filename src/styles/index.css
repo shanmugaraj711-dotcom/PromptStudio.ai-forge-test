@@ -48,3 +48,107 @@ input:focus {
 #prompt-builder .builder-result-anchor {
   scroll-margin-top: 6.5rem;
 }
+
+/* Reference Coding: keep the existing dark component markup but present it as a bright workspace. */
+div[class*="bg-[#070A11]"] {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-[#0E1322]"] {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 55px -35px rgba(15, 23, 42, 0.28) !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-[#0B0F19]"] {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 16px 45px -35px rgba(15, 23, 42, 0.25) !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-zinc-950/70"] {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-white/5"] {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-white/[0.02]"] {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-white/[0.03]"] {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="border-white/10"],
+div[class*="bg-[#070A11]"] main [class*="border-white/5"] {
+  border-color: #e2e8f0 !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-teal-950/60"] {
+  background: #ecfeff !important;
+  border-color: #99f6e4 !important;
+  color: #0f766e !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-zinc-900/90"] {
+  background: #ffffff !important;
+  border-color: #99f6e4 !important;
+  color: #0f766e !important;
+}
+
+div[class*="bg-[#070A11]"] main [class~="text-zinc-100"] {
+  color: #0f172a !important;
+}
+
+div[class*="bg-[#070A11]"] main [class~="text-zinc-200"] {
+  color: #334155 !important;
+}
+
+div[class*="bg-[#070A11]"] main [class~="text-zinc-300"] {
+  color: #475569 !important;
+}
+
+div[class*="bg-[#070A11]"] main [class~="text-zinc-400"] {
+  color: #64748b !important;
+}
+
+div[class*="bg-[#070A11]"] main [class~="text-zinc-500"] {
+  color: #64748b !important;
+}
+
+div[class*="bg-[#070A11]"] main [class~="text-white"]:not(button *) {
+  color: #0f172a !important;
+}
+
+div[class*="bg-[#070A11]"] main textarea,
+div[class*="bg-[#070A11]"] main select {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+div[class*="bg-[#070A11]"] main select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-red-950/30"] {
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #b91c1c !important;
+}
+
+div[class*="bg-[#070A11]"] main [class*="bg-emerald-950/30"] {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
+}
