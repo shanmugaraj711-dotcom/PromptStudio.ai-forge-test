@@ -54,10 +54,10 @@ export default function StandardBuilder({
           disabled={isGenerating || isPreparingImage}
         />
         <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 text-[11px] font-medium text-slate-500">
-          <span>Have an image or UI reference instead?</span>
-          <Link to="/builder?mode=image" className="text-indigo-600 hover:text-indigo-700 hover:underline">Try Image → Prompt</Link>
+          <span>Most people don't type their idea — they upload it. Try</span>
+          <Link to="/builder?mode=image" className="text-indigo-600 hover:text-indigo-700 hover:underline">Image → Prompt</Link>
           <span className="text-slate-300">or</span>
-          <Link to="/builder?mode=coding" className="text-indigo-600 hover:text-indigo-700 hover:underline">Reference Coding</Link>
+          <Link to="/builder?mode=coding" className="text-indigo-600 hover:text-indigo-700 hover:underline">Reference Coding →</Link>
         </div>
       </div>
     </>
