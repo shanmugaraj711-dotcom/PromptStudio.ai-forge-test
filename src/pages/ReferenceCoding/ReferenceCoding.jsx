@@ -393,7 +393,7 @@ export default function ReferenceCoding() {
 
         {result && (
           <div className="mt-8">
-            <ResultCard prompt={result.prompt} perspectives={result.perspectives} intelligence={result.intelligence} category="coding" userPlan="free" />
+            <ResultCard prompt={result.prompt} perspectives={result.perspectives} intelligence={result.intelligence} category="coding" userPlan="free" targetAI={targetAI} />
 
             <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-teal-500/20 bg-teal-950/30 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
