@@ -26,7 +26,7 @@ function Hero() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link to="/image-to-prompt">
+              <Link to="/builder?mode=image">
                 <Button variant="primary" size="lg" className="w-full sm:w-auto">🖼️ Image → Prompt</Button>
               </Link>
               <Link to="/reference-coding">
@@ -58,7 +58,7 @@ function Hero() {
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <Link to="/image-to-prompt" className="group relative min-h-[290px] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-3 transition hover:border-blue-400/40">
+                  <Link to="/builder?mode=image" className="group relative min-h-[290px] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-3 transition hover:border-blue-400/40">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_65%_35%,rgba(251,191,36,0.32),transparent_22%),radial-gradient(circle_at_30%_70%,rgba(59,130,246,0.28),transparent_30%)]" />
                     <div className="relative flex items-center justify-between text-[9px] font-black uppercase tracking-[0.18em] text-slate-400"><span>Reference image</span><span>01</span></div>
                     <div className="relative mt-4 flex h-52 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">

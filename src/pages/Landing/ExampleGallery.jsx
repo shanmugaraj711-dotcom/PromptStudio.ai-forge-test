@@ -91,6 +91,9 @@ function ExampleCard({ example }) {
   };
 
   const isReferenceCoding = example.category === 'Reference → Code';
+  const isImagePrompt = example.category === 'Image → Prompt';
+  const targetPath = isReferenceCoding ? '/reference-coding' : isImagePrompt ? '/builder?mode=image' : '/builder';
+  const targetLabel = isReferenceCoding ? 'Try Reference Coding →' : isImagePrompt ? 'Try Image → Prompt' : 'Try in Builder →';
 
   return (
     <article className="flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl">
@@ -116,8 +119,8 @@ function ExampleCard({ example }) {
         <button type="button" onClick={copyPrompt} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:border-blue-200 hover:text-blue-700">
           {copied ? '✓ Copied' : 'Copy prompt'}
         </button>
-        <Link to={isReferenceCoding ? '/reference-coding' : '/builder'} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-500">
-          {isReferenceCoding ? 'Try Reference Coding →' : 'Try in Builder →'}
+        <Link to={targetPath} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-500">
+          {targetLabel}
         </Link>
       </div>
     </article>
@@ -142,7 +145,7 @@ function ExampleGallery() {
             <p className="mt-1 text-sm text-slate-600">Use Image → Prompt for visual creation or Reference → Code for existing UIs, apps, screenshots, and UX improvements.</p>
           </div>
           <div className="flex shrink-0 flex-wrap justify-center gap-2 sm:justify-end">
-            <Link to="/image-to-prompt" className="rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-blue-50">🖼️ Image → Prompt</Link>
+            <Link to="/builder?mode=image" className="rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-blue-50">🖼️ Image → Prompt</Link>
             <Link to="/reference-coding" className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-500">💻 Reference → Code</Link>
           </div>
         </div>
