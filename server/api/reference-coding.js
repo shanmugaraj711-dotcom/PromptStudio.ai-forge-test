@@ -21,7 +21,12 @@ const deductReferenceCodingCredits = async ({ db, uid, requestId }) => {
     const [userSnap, ledgerSnap] = await Promise.all([transaction.get(userRef), transaction.get(ledgerRef)]);
     if (ledgerSnap.exists) {
       const existing = ledgerSnap.data();
-      return { alreadyCharged: true, creditsRemaining: existing.creditsRemaining };
+
+      return {
+        alreadyCharged: existing.status === "charged",
+        refundRequired: existing.status === "charged",
+        creditsRemaining: existing.creditsRemaining
+      };
     }
     const currentCredits = Math.max(Number(userSnap.exists ? userSnap.data()?.credits || 0 : 0), 0);
     if (currentCredits < REFERENCE_CODING_CREDIT_COST) {
@@ -33,21 +38,156 @@ const deductReferenceCodingCredits = async ({ db, uid, requestId }) => {
     const creditsRemaining = currentCredits - REFERENCE_CODING_CREDIT_COST;
     transaction.set(userRef, { credits: creditsRemaining, quotaVersion: FieldValue.increment(1) }, { merge: true });
     transaction.set(ledgerRef, { amount: REFERENCE_CODING_CREDIT_COST, reason: "reference_coding_generation", status: "charged", creditsRemaining, createdAt: FieldValue.serverTimestamp() });
-    return { alreadyCharged: false, creditsRemaining };
+    return {
+      alreadyCharged: false,
+      refundRequired: true,
+      creditsRemaining
+    };
   });
 };
 
-const refundReferenceCodingCredits = async ({ db, uid, requestId }) => {
+const isTransientFirestoreError = (error) => {
+  const code = String(error?.code || "").toLowerCase();
+  const message = String(error?.message || "").toLowerCase();
+
+  return (
+    code.includes("deadline") ||
+    code.includes("aborted") ||
+    code.includes("unavailable") ||
+    code.includes("resource-exhausted") ||
+    message.includes("deadline exceeded") ||
+    message.includes("unavailable") ||
+    message.includes("aborted") ||
+    message.includes("resource exhausted")
+  );
+};
+
+const refundReferenceCodingCreditsOnce = async ({ db, uid, requestId }) => {
   const userRef = db.collection("users").doc(uid);
   const ledgerRef = userRef.collection("creditLedger").doc(requestId);
+
   return db.runTransaction(async (transaction) => {
-    const [userSnap, ledgerSnap] = await Promise.all([transaction.get(userRef), transaction.get(ledgerRef)]);
-    if (!ledgerSnap.exists || ledgerSnap.data().status !== "charged") return;
-    const currentCredits = Math.max(Number(userSnap.exists ? userSnap.data()?.credits || 0 : 0), 0);
-    const restoredCredits = currentCredits + REFERENCE_CODING_CREDIT_COST;
-    transaction.set(userRef, { credits: restoredCredits, quotaVersion: FieldValue.increment(1) }, { merge: true });
-    transaction.set(ledgerRef, { status: "refunded", refundedAt: FieldValue.serverTimestamp() }, { merge: true });
+    const [userSnap, ledgerSnap] = await Promise.all([
+      transaction.get(userRef),
+      transaction.get(ledgerRef)
+    ]);
+
+    if (!ledgerSnap.exists) {
+      return {
+        refundStatus: "not_required",
+        creditsRemaining: Math.max(
+          Number(userSnap.exists ? userSnap.data()?.credits || 0 : 0),
+          0
+        )
+      };
+    }
+
+    const ledger = ledgerSnap.data();
+
+    if (ledger.status !== "charged") {
+      return {
+        refundStatus: ledger.status === "refunded"
+          ? "confirmed"
+          : "not_required",
+        creditsRemaining: Math.max(
+          Number(userSnap.exists ? userSnap.data()?.credits || 0 : 0),
+          0
+        )
+      };
+    }
+
+    const currentCredits = Math.max(
+      Number(userSnap.exists ? userSnap.data()?.credits || 0 : 0),
+      0
+    );
+
+    const restoredCredits =
+      currentCredits + REFERENCE_CODING_CREDIT_COST;
+
+    transaction.set(
+      userRef,
+      {
+        credits: restoredCredits,
+        quotaVersion: FieldValue.increment(1)
+      },
+      { merge: true }
+    );
+
+    transaction.set(
+      ledgerRef,
+      {
+        status: "refunded",
+        refundedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    return {
+      refundStatus: "confirmed",
+      creditsRemaining: restoredCredits
+    };
   });
+};
+
+const shouldRefundAfterGenerationResponse = async ({ db, uid, requestId, statusCode }) => {
+  if (statusCode !== 409) return true;
+
+  const requestRef = db
+    .collection("users")
+    .doc(uid)
+    .collection("generationRequests")
+    .doc(requestId);
+
+  const snapshot = await requestRef.get();
+  if (!snapshot.exists) return true;
+
+  const status = snapshot.data()?.status;
+
+  // A duplicate request can receive 409 while the original generation is
+  // still reserved. Do not refund the original charge in that case.
+  if (status === "reserved" || status === "succeeded") return false;
+
+  return true;
+};
+
+const refundReferenceCodingCredits = async ({ db, uid, requestId }) => {
+  const delays = [0, 150, 400];
+  let lastError;
+
+  for (const delay of delays) {
+    if (delay) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
+    try {
+      return await refundReferenceCodingCreditsOnce({
+        db,
+        uid,
+        requestId
+      });
+    } catch (error) {
+      lastError = error;
+
+      if (!isTransientFirestoreError(error)) {
+        throw error;
+      }
+
+      console.warn("Reference Coding refund attempt failed", {
+        requestId,
+        code: error?.code || "unknown"
+      });
+    }
+  }
+
+  console.error("Reference Coding refund could not be confirmed", {
+    requestId,
+    code: lastError?.code || "unknown"
+  });
+
+  return {
+    refundStatus: "pending",
+    creditsRemaining: null
+  };
 };
 
 // Reference Coding uses the proven fast generation pipeline. The dedicated route
@@ -94,13 +234,54 @@ export default async function handler(req, res) {
   try {
     result = await generatePromptHandler(req, res);
   } catch (error) {
-    if (!creditResult.alreadyCharged) {
-      await refundReferenceCodingCredits({ db, uid: user.uid, requestId: body.requestId });
+    if (
+      creditResult.refundRequired &&
+      await shouldRefundAfterGenerationResponse({
+        db,
+        uid: user.uid,
+        requestId: body.requestId,
+        statusCode: Number(error?.status || 500)
+      })
+    ) {
+      const refund = await refundReferenceCodingCredits({
+        db,
+        uid: user.uid,
+        requestId: body.requestId
+      });
+
+      if (refund.refundStatus !== "confirmed") {
+        console.error("Reference Coding refund pending after handler failure", {
+          requestId: body.requestId,
+          statusCode: Number(error?.status || 500)
+        });
+      }
     }
+
     throw error;
   }
-  if (res.statusCode !== 200 && !creditResult.alreadyCharged) {
-    await refundReferenceCodingCredits({ db, uid: user.uid, requestId: body.requestId });
+
+  if (
+    res.statusCode !== 200 &&
+    creditResult.refundRequired &&
+    await shouldRefundAfterGenerationResponse({
+      db,
+      uid: user.uid,
+      requestId: body.requestId,
+      statusCode: res.statusCode
+    })
+  ) {
+    const refund = await refundReferenceCodingCredits({
+      db,
+      uid: user.uid,
+      requestId: body.requestId
+    });
+
+    if (refund.refundStatus !== "confirmed") {
+      console.error("Reference Coding refund pending after non-200 response", {
+        requestId: body.requestId,
+        statusCode: res.statusCode
+      });
+    }
   }
 
   // Record telemetry only after the underlying generation endpoint has returned
