@@ -230,7 +230,7 @@ const rollback = async ({
   db,
   uid,
   requestId,
-  now,
+  _now,
   failureCode,
   productConfig
 }) => {
