@@ -172,3 +172,56 @@ div[class*="bg-[#070A11]"] main [class*="bg-teal-950/30"] {
   background: #e6f2f1 !important;
   border-color: #b8d8d5 !important;
 }
+
+/* Reference Coding AI selector: one calm palette, with selection carrying the emphasis. */
+div[class*="bg-[#070A11]"] main button[class~="bg-zinc-700"],
+div[class*="bg-[#070A11]"] main button[class~="bg-indigo-600"],
+div[class*="bg-[#070A11]"] main button[class~="bg-orange-600"],
+div[class*="bg-[#070A11]"] main button[class~="bg-emerald-600"],
+div[class*="bg-[#070A11]"] main button[class~="bg-blue-600"],
+div[class*="bg-[#070A11]"] main button[class~="bg-slate-700"],
+div[class*="bg-[#070A11]"] main button[class~="bg-pink-600"],
+div[class*="bg-[#070A11]"] main button[class~="bg-orange-700"],
+div[class*="bg-[#070A11]"] main button[class~="bg-zinc-800"],
+div[class*="bg-[#070A11]"] main button[class~="bg-cyan-600"],
+div[class*="bg-[#070A11]"] main button[class~="bg-amber-600"],
+div[class*="bg-[#070A11]"] main button[class~="bg-teal-700"] {
+  background: #e9eef3 !important;
+  color: #334155 !important;
+  border: 1px solid #d1d9e2 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+}
+
+div[class*="bg-[#070A11]"] main button[class~="bg-zinc-700"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-indigo-600"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-orange-600"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-emerald-600"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-blue-600"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-slate-700"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-pink-600"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-orange-700"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-zinc-800"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-cyan-600"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-amber-600"]:hover,
+div[class*="bg-[#070A11]"] main button[class~="bg-teal-700"]:hover {
+  background: #dfe7ee !important;
+  color: #1e293b !important;
+}
+
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-zinc-700"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-indigo-600"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-orange-600"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-emerald-600"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-blue-600"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-slate-700"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-pink-600"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-orange-700"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-zinc-800"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-cyan-600"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-amber-600"],
+div[class*="bg-[#070A11]"] main button.ring-2.ring-teal-300[class~="bg-teal-700"] {
+  background: #f5f8fa !important;
+  border-color: #8aa6b8 !important;
+  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.2), 0 2px 5px rgba(15, 23, 42, 0.07) !important;
+  color: #0f172a !important;
+}
