@@ -1,5 +1,6 @@
 import adminBootstrapHandler from "../server/api/admin-bootstrap.js";
 import adminHandler from "../server/api/admin.js";
+import apkForgeHandler from "../server/api/apk-forge.js";
 import feedbackHandler from "../server/api/feedback.js";
 import generatePromptCreditsHandler from "../server/api/generate-prompt-credits.js";
 import generatePromptHandler from "../server/api/generate-prompt.js";
@@ -20,6 +21,7 @@ import whatsappWebhookHandler from "../server/api/webhooks/whatsapp.js";
 const STATIC_HANDLERS = {
   "/api/admin-bootstrap": adminBootstrapHandler,
   "/api/admin": adminHandler,
+  "/api/apk-forge": apkForgeHandler,
   "/api/feedback": feedbackHandler,
   "/api/generate-prompt-credits": generatePromptCreditsHandler,
   "/api/generate-prompt": generatePromptHandler,
