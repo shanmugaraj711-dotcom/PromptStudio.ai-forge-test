@@ -92,7 +92,7 @@ const activatePro = async (uid, subscriptionId, billing) => {
   const userRef = db.collection("users").doc(uid);
   const subRef = db.collection("paymentSubscriptions").doc(subscriptionId);
   await db.runTransaction(async (tx) => {
-    const [subSnap, userSnap] = await Promise.all([tx.get(subRef), tx.get(userRef)]);
+    const subSnap = await tx.get(subRef);
     if (!subSnap.exists) throw new Error("Subscription was not found.");
     const sub = subSnap.data();
     if (sub.uid !== uid) throw new Error("Subscription does not belong to this account.");
