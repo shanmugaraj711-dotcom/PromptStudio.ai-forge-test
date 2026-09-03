@@ -76,6 +76,25 @@ const normalizeIntelligence = (value, category) => {
   const safePerspectives = perspectives.filter((item) => item && typeof item.label === "string" && typeof item.prompt === "string").slice(0, 3).map((item, index) => ({ id: item.id || `perspective-${index + 1}`, label: item.label.trim().slice(0, 60), prompt: item.prompt.trim().slice(0, 12000) })).filter((item) => item.prompt.length >= 20);
   return { prompt: typeof intelligence.prompt === "string" ? intelligence.prompt.trim().slice(0, 12000) : "", perspectives: safePerspectives, intelligence: { intent: typeof intelligence.intent === "string" ? intelligence.intent.trim().slice(0, 240) : "", outputType: typeof intelligence.outputType === "string" ? intelligence.outputType.trim().slice(0, 120) : category, assumptions: Array.isArray(intelligence.assumptions) ? intelligence.assumptions.filter((x) => typeof x === "string").slice(0, 5) : [], missing: Array.isArray(intelligence.missing) ? intelligence.missing.filter((x) => typeof x === "string").slice(0, 5) : [], recommendations: Array.isArray(intelligence.recommendations) ? intelligence.recommendations.filter((x) => typeof x === "string").slice(0, 5) : [] } };
 };
+
+const OUTPUT_FORMAT_CHECKS = {
+  react: /import\s+.*from\s+['"]react['"]|from\s+['"]react['"]|className=|useState\(|useEffect\(/,
+  vue: /<template[\s>]/i,
+  html: /<!doctype\s+html|<html[\s>]/i,
+  fullstack: /(export\s+default\s+function|className=|<template[\s>])/i,
+};
+
+const checkOutputFormat = (prompt, outputFormat) => {
+  if (!outputFormat || outputFormat === "notsure") return true;
+  const check = OUTPUT_FORMAT_CHECKS[outputFormat];
+  if (!check) return true;
+  const text = String(prompt || "");
+  if (outputFormat === "fullstack") {
+    return check.test(text) && /(api|backend|server|endpoint|route)/i.test(text);
+  }
+  return check.test(text);
+};
+
 const createOptimizedPrompt = async ({ client, idea, aiModel, category, image }) => {
   const text = `You are the intelligence engine inside PromptStudio. Transform the user's request into a professional, ready-to-paste AI prompt.\n\nTARGET AI: ${aiModel}\nCATEGORY: ${category}\nUSER REQUEST:\n${idea || "No text was supplied; use the reference image as the primary source of truth."}`;
   const contents = image ? [{ text }, { inlineData: { mimeType: image.mimeType, data: image.data } }] : text;
