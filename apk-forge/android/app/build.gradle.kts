@@ -3,6 +3,10 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val forgeWebOrigin = providers.gradleProperty("FORGE_WEB_ORIGIN")
+    .orElse("https://forge.invalid")
+    .get()
+
 android {
     namespace = "in.promptstudio.ai"
     compileSdk = 35
@@ -13,7 +17,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
-        buildConfigField("String", "FORGE_WEB_ORIGIN", "\"https://promptstudioai.in\"")
+        buildConfigField("String", "FORGE_WEB_ORIGIN", "\"$forgeWebOrigin\"")
     }
 
     buildFeatures {
