@@ -37,6 +37,12 @@ const TARGET_AIS = [
   { id: 'cline', label: 'Cline', color: 'bg-teal-700', url: 'https://cline.bot' },
 ];
 
+const GENERATION_STATUS_LINES = [
+  'Reading your reference...',
+  'Validating output format...',
+  'Assembling your prompt...',
+];
+
 const readHead = (file, length = 8) => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onerror = () => reject(new Error('We could not inspect that file.'));
@@ -134,6 +140,7 @@ export default function ReferenceCoding() {
   const [error, setError] = useState('');
   const [isPreparing, setIsPreparing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStatusIndex, setGenerationStatusIndex] = useState(0);
   const [result, setResult] = useState(null);
   const [outputFormat, setOutputFormat] = useState('notsure');
   const [targetAI, setTargetAI] = useState('any');
@@ -143,6 +150,17 @@ export default function ReferenceCoding() {
     fetchRuntimeProductConfig(user).then((config) => { if (active) setProductConfig(config); }).catch((err) => console.error('Unable to load runtime product config', err));
     return () => { active = false; };
   }, [user]);
+
+  useEffect(() => {
+    if (!isGenerating) {
+      setGenerationStatusIndex(0);
+      return undefined;
+    }
+    const timer = setInterval(() => {
+      setGenerationStatusIndex((index) => (index + 1) % GENERATION_STATUS_LINES.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [isGenerating]);
 
   const quota = createQuotaState(
     {
@@ -213,7 +231,7 @@ export default function ReferenceCoding() {
       });
       setResult(response);
       if (response.quota) updateQuotaState(response.quota, response.creditsRemaining);
-      setMessage('✓ Coding intelligence ready.');
+      setMessage(response.formatWarning || '✓ Coding intelligence ready.');
     } catch (err) {
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return;
       setError(err.message || 'Unable to generate the coding prompt.');
@@ -368,7 +386,7 @@ export default function ReferenceCoding() {
               disabled={isPreparing || isGenerating}
               className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-teal-500 via-teal-600 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-xl shadow-teal-500/20 transition disabled:opacity-70"
             >
-              {isGenerating ? (user ? 'Analyzing references…' : 'Signing in…') : 'Generate Coding Prompt →'}
+              {isGenerating ? (user ? GENERATION_STATUS_LINES[generationStatusIndex] : 'Signing in…') : 'Generate Coding Prompt →'}
             </button>
           </div>
 
