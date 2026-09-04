@@ -6,17 +6,31 @@ plugins {
 val forgeWebOrigin = providers.gradleProperty("FORGE_WEB_ORIGIN")
     .orElse("https://forge.invalid")
     .get()
+val forgeAppName = providers.gradleProperty("APP_NAME")
+    .orElse("PromptStudio AI")
+    .get()
+val forgePackageId = providers.gradleProperty("PACKAGE_ID")
+    .orElse("in.promptstudio.ai")
+    .get()
+val forgeVersionName = providers.gradleProperty("VERSION_NAME")
+    .orElse("0.1.0")
+    .get()
+val forgeVersionCode = providers.gradleProperty("VERSION_CODE")
+    .orElse("1")
+    .get()
+    .toInt()
 
 android {
     namespace = "promptstudio.ai"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "in.promptstudio.ai"
+        applicationId = forgePackageId
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = forgeVersionCode
+        versionName = forgeVersionName
+        resValue("string", "app_name", forgeAppName)
         buildConfigField("String", "FORGE_WEB_ORIGIN", "\"$forgeWebOrigin\"")
     }
 
