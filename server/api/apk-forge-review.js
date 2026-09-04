@@ -6,9 +6,15 @@ import { isConfigured, razorpayRequest } from "./_razorpay.js";
 
 const ACTIVE = new Set(["PENDING_REVIEW"]);
 const REFUND_STATES = new Set(["NOT_REQUIRED", "PENDING"]);
+const BUILD_STATUSES = ["BUILDING", "VERIFYING", "READY", "BUILD_FAILED"];
 const now = () => new Date();
 const requestRef = (db, id) => db.collection("apkForgeRequests").doc(id);
 const slotDate = () => now().toISOString().slice(0, 10);
+const serializeDate = (value) => value?.toDate?.()?.toISOString?.() || value || null;
+const buildView = (doc) => {
+  const data = doc.data() || {};
+  return { id: doc.id, ...data, buildStartedAt: serializeDate(data.buildStartedAt), buildFinishedAt: serializeDate(data.buildFinishedAt), verifiedAt: serializeDate(data.verifiedAt), createdAt: serializeDate(data.createdAt), paidAt: serializeDate(data.paidAt) };
+};
 const fail = (status, code, message) => { const error = new Error(message); error.status = status; error.code = code; throw error; };
 const buildIdFor = (id) => `forge_${String(id || "").replace(/[^A-Za-z0-9_-]/g, "-")}_${Date.now().toString(36)}`;
 
@@ -29,14 +35,18 @@ export default async function handler(req, res) {
     const actor = await requireFounderAdmin(req, { write: req.method !== "GET" });
     const db = adminDb();
     if (req.method === "GET") {
-      const snap = await db.collection("apkForgeRequests").where("status", "==", "PENDING_REVIEW").limit(100).get();
-      const requests = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const [pendingSnap, buildsSnap] = await Promise.all([
+        db.collection("apkForgeRequests").where("status", "==", "PENDING_REVIEW").limit(100).get(),
+        db.collection("apkForgeRequests").where("status", "in", BUILD_STATUSES).limit(100).get(),
+      ]);
+      const requests = pendingSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       requests.sort((a, b) => {
         const left = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
         const right = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
         return left - right;
       });
-      return json(res, 200, { ok: true, requests });
+      const builds = buildsSnap.docs.filter((doc) => Boolean(doc.data()?.buildId)).map(buildView).sort((a, b) => new Date(b.buildStartedAt || b.createdAt || 0) - new Date(a.buildStartedAt || a.createdAt || 0));
+      return json(res, 200, { ok: true, requests, builds });
     }
     if (req.method !== "POST") return json(res, 405, { code: "method_not_allowed", message: "Forge review accepts GET and POST requests only." });
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
