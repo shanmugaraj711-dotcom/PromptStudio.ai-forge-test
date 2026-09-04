@@ -11,31 +11,86 @@ const reconcile = async (db, ref, request) => {
   const runs = await listForgeBuildRuns({ forgeRequestId: ref.id, buildId: request.buildId });
   const run = runs.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
   if (!run) return request;
+
   if (run.status !== "completed") {
     await ref.set({ githubRunId: run.id, githubRunStatus: run.status, githubRunUrl: run.html_url || null, updatedAt: new Date() }, { merge: true });
     return { ...request, githubRunId: run.id, githubRunStatus: run.status, githubRunUrl: run.html_url || null };
   }
+
   if (run.conclusion !== "success") {
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists) return;
       const current = snap.data() || {};
       if (current.status !== "BUILDING" && current.status !== "VERIFYING") return;
-      tx.update(ref, { status: "BUILD_FAILED", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null, buildFinishedAt: new Date(), updatedAt: new Date() });
+      tx.update(ref, {
+        status: "BUILD_FAILED",
+        githubRunId: run.id,
+        githubRunStatus: run.status,
+        githubRunConclusion: run.conclusion,
+        githubRunUrl: run.html_url || null,
+        buildFinishedAt: new Date(),
+        updatedAt: new Date(),
+      });
     });
     return { ...request, status: "BUILD_FAILED", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null };
   }
-  const artifacts = await listForgeArtifacts(run.id);
-  const artifact = artifacts.find((item) => item?.name === `promptstudio-forge-${request.buildId}` && !item.expired);
-  if (!artifact) fail(502, "forge_artifact_missing", "The Forge build completed but its APK artifact was not found.");
+
+  // A successful GitHub run means BUILDING is complete. Explicitly enter VERIFYING
+  // before accepting the artifact as READY so Firestore never skips the verification state.
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) return;
     const current = snap.data() || {};
-    if (current.status !== "BUILDING" && current.status !== "VERIFYING") return;
-    tx.update(ref, { status: "READY", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null, artifactId: artifact.id, artifactName: artifact.name, artifactSize: artifact.size_in_bytes || null, artifactExpired: Boolean(artifact.expired), artifactUrl: artifact.archive_download_url || null, buildFinishedAt: new Date(), verifiedAt: new Date(), updatedAt: new Date() });
+    if (current.status !== "BUILDING") return;
+    tx.update(ref, {
+      status: "VERIFYING",
+      githubRunId: run.id,
+      githubRunStatus: run.status,
+      githubRunConclusion: run.conclusion,
+      githubRunUrl: run.html_url || null,
+      buildFinishedAt: new Date(),
+      updatedAt: new Date(),
+    });
   });
-  return { ...request, status: "READY", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null, artifactId: artifact.id, artifactName: artifact.name, artifactSize: artifact.size_in_bytes || null, artifactExpired: Boolean(artifact.expired) };
+
+  const artifacts = await listForgeArtifacts(run.id);
+  const artifact = artifacts.find((item) => item?.name === `promptstudio-forge-${request.buildId}` && !item.expired);
+  if (!artifact) fail(502, "forge_artifact_missing", "The Forge build completed but its APK artifact was not found.");
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+    const current = snap.data() || {};
+    if (current.status !== "VERIFYING") return;
+    tx.update(ref, {
+      status: "READY",
+      githubRunId: run.id,
+      githubRunStatus: run.status,
+      githubRunConclusion: run.conclusion,
+      githubRunUrl: run.html_url || null,
+      artifactId: artifact.id,
+      artifactName: artifact.name,
+      artifactSize: artifact.size_in_bytes || null,
+      artifactExpired: Boolean(artifact.expired),
+      buildFinishedAt: current.buildFinishedAt || new Date(),
+      verifiedAt: new Date(),
+      updatedAt: new Date(),
+    });
+  });
+
+  return {
+    ...request,
+    status: "READY",
+    githubRunId: run.id,
+    githubRunStatus: run.status,
+    githubRunConclusion: run.conclusion,
+    githubRunUrl: run.html_url || null,
+    artifactId: artifact.id,
+    artifactName: artifact.name,
+    artifactSize: artifact.size_in_bytes || null,
+    artifactExpired: Boolean(artifact.expired),
+  };
 };
 
 export default async function handler(req, res) {
