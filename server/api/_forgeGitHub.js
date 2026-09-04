@@ -34,33 +34,40 @@ const githubRequest = async (path, options = {}) => {
   return body;
 };
 
+const encodePath = (path) => String(path).split("/").map((part) => encodeURIComponent(part)).join("/");
+
 export const dispatchForgeBuild = async ({ forgeRequestId, buildId, appName, forgeWebOrigin, packageId, versionName, versionCode }) => {
-  const inputs = {
-    forge_request_id: String(forgeRequestId || ""),
-    build_id: String(buildId || ""),
-    app_name: String(appName || "PromptStudio AI"),
-    forge_web_origin: String(forgeWebOrigin || ""),
-    package_id: String(packageId || "in.promptstudio.ai"),
-    version_name: String(versionName || "0.1.0"),
-    version_code: String(versionCode || "1"),
+  const marker = {
+    forgeRequestId: String(forgeRequestId || "").trim(),
+    buildId: String(buildId || "").trim(),
+    appName: String(appName || "PromptStudio AI").trim(),
+    forgeWebOrigin: String(forgeWebOrigin || "").trim(),
+    packageId: String(packageId || "in.promptstudio.ai").trim(),
+    versionName: String(versionName || "0.1.0").trim(),
+    versionCode: String(versionCode || "1").trim(),
   };
-  if (!inputs.forge_request_id || !inputs.build_id || !inputs.forge_web_origin) {
-    const error = new Error("Forge workflow dispatch inputs are incomplete.");
+  if (!marker.forgeRequestId || !marker.buildId || !marker.forgeWebOrigin) {
+    const error = new Error("Forge build queue inputs are incomplete.");
     error.status = 500;
     error.code = "forge_dispatch_invalid_inputs";
     throw error;
   }
-
-  await githubRequest(`/repos/${REPO}/actions/workflows/${encodeURIComponent(BUILD_WORKFLOW)}/dispatches`, {
-    method: "POST",
-    body: JSON.stringify({ ref: BRANCH, inputs }),
+  const markerPath = `apk-forge/requests/${marker.buildId}.json`;
+  const encodedContent = Buffer.from(JSON.stringify(marker, null, 2) + "\n", "utf8").toString("base64");
+  await githubRequest(`/repos/${REPO}/contents/${encodePath(markerPath)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      message: `forge: queue ${markerPath}`,
+      content: encodedContent,
+      branch: BRANCH,
+    }),
     headers: { "Content-Type": "application/json" },
   });
-  return { accepted: true, workflow: BUILD_WORKFLOW, branch: BRANCH, buildId };
+  return { accepted: true, workflow: BUILD_WORKFLOW, branch: BRANCH, buildId, markerPath };
 };
 
 export const listForgeBuildRuns = async ({ forgeRequestId, buildId }) => {
-  const query = new URLSearchParams({ event: "workflow_dispatch", branch: BRANCH, per_page: "30" });
+  const query = new URLSearchParams({ event: "push", branch: BRANCH, per_page: "30" });
   const data = await githubRequest(`/repos/${REPO}/actions/runs?${query.toString()}`);
   const runs = Array.isArray(data?.workflow_runs) ? data.workflow_runs : [];
   return runs.filter((run) => {
