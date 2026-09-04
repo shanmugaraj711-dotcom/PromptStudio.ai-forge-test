@@ -3,7 +3,7 @@ const BUILD_WORKFLOW = "apk-forge-build.yml";
 const BRANCH = "forge/apk-forge";
 const API = "https://api.github.com";
 
-const token = () => String(process.env.GITHUB_FORGE_TOKEN || "").trim();
+const token = () => String(process.env.FORGE_GITHUB_TOKEN || "").trim();
 
 const githubRequest = async (path, options = {}) => {
   const auth = token();
