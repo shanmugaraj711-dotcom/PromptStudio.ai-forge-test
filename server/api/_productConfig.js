@@ -33,6 +33,16 @@ export const normalizeProductConfig = (input) => {
   next.pricing.customCredits.minInr = clampInt(custom.minInr, 1, 100000) ?? base.pricing.customCredits.minInr;
   next.pricing.customCredits.maxInr = clampInt(custom.maxInr, next.pricing.customCredits.minInr, 1000000) ?? base.pricing.customCredits.maxInr;
   next.pricing.customCredits.inrPerCredit = Math.max(Number(custom.inrPerCredit || base.pricing.customCredits.inrPerCredit), 0.01);
+
+  const forge = pricing.apkForge || {};
+  next.pricing.apkForge = { ...base.pricing.apkForge, refundPolicy: { ...base.pricing.apkForge.refundPolicy } };
+  if (forge.enabled !== undefined) next.pricing.apkForge.enabled = Boolean(forge.enabled);
+  if (forge.buildPriceInr !== undefined) next.pricing.apkForge.buildPriceInr = clampInt(forge.buildPriceInr, 1, 100000) ?? base.pricing.apkForge.buildPriceInr;
+  if (forge.currency !== undefined && forge.currency === 'INR') next.pricing.apkForge.currency = 'INR';
+  if (forge.dailyBuildLimit !== undefined) next.pricing.apkForge.dailyBuildLimit = clampInt(forge.dailyBuildLimit, 1, 1000) ?? base.pricing.apkForge.dailyBuildLimit;
+  if (forge.reviewExpiryHours !== undefined) next.pricing.apkForge.reviewExpiryHours = clampInt(forge.reviewExpiryHours, 1, 720) ?? base.pricing.apkForge.reviewExpiryHours;
+  if (forge.buildTimeoutMinutes !== undefined) next.pricing.apkForge.buildTimeoutMinutes = clampInt(forge.buildTimeoutMinutes, 1, 120) ?? base.pricing.apkForge.buildTimeoutMinutes;
+
   next.creditCosts = { ...base.creditCosts };
   for (const key of Object.keys(base.creditCosts)) next.creditCosts[key] = clampInt(raw.creditCosts?.[key], 0, 1000) ?? base.creditCosts[key];
   next.features = clone(base.features);
