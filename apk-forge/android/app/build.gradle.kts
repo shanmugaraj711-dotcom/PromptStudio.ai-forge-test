@@ -8,7 +8,7 @@ val forgeWebOrigin = providers.gradleProperty("FORGE_WEB_ORIGIN")
     .get()
 
 android {
-    namespace = "in.promptstudio.ai"
+    namespace = "promptstudio.ai"
     compileSdk = 35
 
     defaultConfig {
