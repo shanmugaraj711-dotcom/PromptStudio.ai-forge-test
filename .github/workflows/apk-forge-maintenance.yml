@@ -1,0 +1,35 @@
+name: APK Forge Maintenance
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Expire stale Forge reviews
+        env:
+          FORGE_ORIGIN: ${{ secrets.FORGE_MAINTENANCE_ORIGIN }}
+          FORGE_SECRET: ${{ secrets.APK_FORGE_RECONCILE_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$FORGE_ORIGIN"
+          test -n "$FORGE_SECRET"
+          curl --fail-with-body --silent --show-error --max-time 20 \
+            -X POST "$FORGE_ORIGIN/api/apk-forge-expiry" \
+            -H "x-apk-forge-reconcile-secret: $FORGE_SECRET"
+      - name: Reconcile captured Forge payments
+        env:
+          FORGE_ORIGIN: ${{ secrets.FORGE_MAINTENANCE_ORIGIN }}
+          FORGE_SECRET: ${{ secrets.APK_FORGE_RECONCILE_SECRET }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --max-time 20 \
+            -X POST "$FORGE_ORIGIN/api/apk-forge-reconcile" \
+            -H "x-apk-forge-reconcile-secret: $FORGE_SECRET"
