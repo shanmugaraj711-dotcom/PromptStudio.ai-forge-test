@@ -3,11 +3,31 @@ name: APK Forge Build
 on:
   workflow_dispatch:
     inputs:
+      app_name:
+        description: 'Android app display name'
+        required: true
+        type: string
+        default: 'PromptStudio AI'
       forge_web_origin:
-        description: 'HTTPS Forge preview origin to package into the APK'
+        description: 'HTTPS website origin to package into the APK'
         required: true
         type: string
         default: 'https://forge.invalid'
+      package_id:
+        description: 'Android application ID, e.g. com.example.myapp'
+        required: true
+        type: string
+        default: 'in.promptstudio.ai'
+      version_name:
+        description: 'App version name'
+        required: true
+        type: string
+        default: '0.1.0'
+      version_code:
+        description: 'Positive Android version code'
+        required: true
+        type: string
+        default: '1'
   push:
     branches:
       - forge/apk-forge
@@ -18,32 +38,48 @@ on:
 permissions:
   contents: read
 
+env:
+  FORGE_APP_NAME: ${{ github.event.inputs.app_name || 'PromptStudio AI' }}
+  FORGE_WEB_ORIGIN: ${{ github.event.inputs.forge_web_origin || 'https://forge.invalid' }}
+  FORGE_PACKAGE_ID: ${{ github.event.inputs.package_id || 'in.promptstudio.ai' }}
+  FORGE_VERSION_NAME: ${{ github.event.inputs.version_name || '0.1.0' }}
+  FORGE_VERSION_CODE: ${{ github.event.inputs.version_code || '1' }}
+
 jobs:
   build-apk:
-    name: Build PromptStudio AI APK
+    name: Build configurable APK
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
       run:
         working-directory: apk-forge/android
-    env:
-      FORGE_WEB_ORIGIN: ${{ github.event.inputs.forge_web_origin || 'https://forge.invalid' }}
     steps:
       - name: Checkout Forge branch
         uses: actions/checkout@v4
 
-      - name: Validate non-production origin
+      - name: Validate Forge configuration
         run: |
           python - <<'PY'
-          import os
+          import os, re
           from urllib.parse import urlparse
           origin = os.environ['FORGE_WEB_ORIGIN'].strip().rstrip('/')
           parsed = urlparse(origin)
-          if parsed.scheme != 'https' or not parsed.netloc:
-              raise SystemExit('FORGE_WEB_ORIGIN must be a valid HTTPS origin')
+          if parsed.scheme != 'https' or not parsed.netloc or parsed.path not in ('', '/') or parsed.query or parsed.fragment:
+              raise SystemExit('FORGE_WEB_ORIGIN must be a valid HTTPS origin without path/query/fragment')
           if parsed.netloc == 'promptstudioai.in' or parsed.netloc.endswith('.promptstudioai.in'):
               raise SystemExit('Production origin is blocked in the Forge build pipeline')
+          package_id = os.environ['FORGE_PACKAGE_ID'].strip()
+          if not re.fullmatch(r'[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+', package_id):
+              raise SystemExit('PACKAGE_ID must be a valid Android application ID')
+          if not re.fullmatch(r'[1-9][0-9]*', os.environ['FORGE_VERSION_CODE'].strip()):
+              raise SystemExit('VERSION_CODE must be a positive integer')
+          if not os.environ['FORGE_APP_NAME'].strip():
+              raise SystemExit('APP_NAME cannot be empty')
+          if not os.environ['FORGE_VERSION_NAME'].strip():
+              raise SystemExit('VERSION_NAME cannot be empty')
           print(f'Forge origin accepted: {origin}')
+          print(f'Package ID accepted: {package_id}')
+          print(f'App: {os.environ["FORGE_APP_NAME"]} {os.environ["FORGE_VERSION_NAME"]} (code {os.environ["FORGE_VERSION_CODE"]})')
           PY
 
       - name: Set up JDK 17
@@ -64,7 +100,14 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build debug APK
-        run: gradle --no-daemon --stacktrace -PFORGE_WEB_ORIGIN="$FORGE_WEB_ORIGIN" assembleDebug
+        run: >-
+          gradle --no-daemon --stacktrace
+          -PFORGE_WEB_ORIGIN="$FORGE_WEB_ORIGIN"
+          -PAPP_NAME="$FORGE_APP_NAME"
+          -PPACKAGE_ID="$FORGE_PACKAGE_ID"
+          -PVERSION_NAME="$FORGE_VERSION_NAME"
+          -PVERSION_CODE="$FORGE_VERSION_CODE"
+          assembleDebug
 
       - name: Inspect APK
         run: |
@@ -75,7 +118,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: promptstudio-ai-forge-debug-apk-${{ github.run_number }}
+          name: promptstudio-forge-debug-apk-${{ github.run_number }}
           path: apk-forge/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
