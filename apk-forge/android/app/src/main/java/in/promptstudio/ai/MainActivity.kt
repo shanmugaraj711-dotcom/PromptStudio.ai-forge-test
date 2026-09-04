@@ -1,4 +1,4 @@
-package in.promptstudio.ai
+package promptstudio.ai
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
