@@ -1,0 +1,37 @@
+name: APK Forge Protection Test
+
+on:
+  push:
+    branches:
+      - forge/apk-forge
+    paths:
+      - 'apk-forge/protection-test/trigger.txt'
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+jobs:
+  verify-protection-bypass:
+    name: Verify protected Forge origin
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify protected Forge origin with automation bypass
+        env:
+          FORGE_WEB_ORIGIN: https://prompt-studio-ai-git-forge-apk-forge-prompt-studioai.vercel.app
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+          echo "Checking protected Forge source origin: $FORGE_WEB_ORIGIN"
+          status="$(curl --silent --show-error --location --max-time 15 --retry 2 --retry-delay 2 \
+            -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" \
+            -o /dev/null -w '%{http_code}' "$FORGE_WEB_ORIGIN")"
+          echo "HTTP status: $status"
+          if [ "$status" != "200" ]; then
+            echo "Protection bypass check failed: expected HTTP 200, got $status" >&2
+            exit 1
+          fi
+          echo "Protection bypass check passed: HTTP 200"
