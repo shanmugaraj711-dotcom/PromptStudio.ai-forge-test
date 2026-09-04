@@ -1,0 +1,38 @@
+name: APK Forge Server Validation
+
+on:
+  push:
+    branches: [forge/apk-forge]
+    paths:
+      - "server/api/apk-forge*.js"
+      - "server/api/razorpay-webhook.js"
+      - "server/api/_productConfig.js"
+      - "src/pages/ApkForge/**"
+      - "src/services/apkForge.js"
+      - "api/index.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/forge-server-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Forge branch
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint Forge changes
+        run: npx eslint server/api/apk-forge.js server/api/apk-forge-order.js server/api/apk-forge-verify.js server/api/apk-forge-reconcile.js server/api/razorpay-webhook.js src/pages/ApkForge/ApkForge.jsx src/services/apkForge.js api/index.js
+      - name: Build web app
+        run: npm run build
