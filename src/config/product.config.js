@@ -16,6 +16,20 @@ export const PRODUCT_CONFIG = Object.freeze({
       creator: Object.freeze({ id: 'creator', name: 'Creator Credits', priceInr: 99, credits: 60 }),
     }),
     customCredits: Object.freeze({ minInr: 10, maxInr: 1000, inrPerCredit: 2 }),
+    apkForge: Object.freeze({
+      enabled: true,
+      buildPriceInr: 500,
+      currency: 'INR',
+      dailyBuildLimit: 5,
+      reviewExpiryHours: 72,
+      buildTimeoutMinutes: 10,
+      refundPolicy: Object.freeze({
+        adminReject: 'auto_refund',
+        reviewExpiry: 'auto_refund',
+        postApprovalCancellation: 'no_auto_refund',
+        paymentReconciliationFailure: 'auto_refund_or_admin_alert',
+      }),
+    }),
   }),
   creditCosts: Object.freeze({
     standardGeneration: 2,
