@@ -33,6 +33,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Lint Forge changes
-        run: npx eslint server/api/apk-forge.js server/api/apk-forge-order.js server/api/apk-forge-verify.js server/api/apk-forge-reconcile.js server/api/razorpay-webhook.js src/pages/ApkForge/ApkForge.jsx src/services/apkForge.js api/index.js
+        run: npx eslint server/api/apk-forge.js server/api/apk-forge-order.js server/api/apk-forge-verify.js server/api/apk-forge-reconcile.js server/api/apk-forge-review.js server/api/apk-forge-refund.js server/api/apk-forge-expiry.js server/api/razorpay-webhook.js src/pages/ApkForge/ApkForge.jsx src/services/apkForge.js api/index.js
       - name: Build web app
         run: npm run build
