@@ -7,7 +7,7 @@ import { isConfigured, razorpayRequest } from "./_razorpay.js";
 const ACTIVE = new Set(["PENDING_REVIEW"]);
 const REFUND_STATES = new Set(["NOT_REQUIRED", "PENDING"]);
 const BUILD_STATUSES = ["BUILDING", "VERIFYING", "READY", "BUILD_FAILED"];
-const STABLE_FORGE_TEST_ORIGIN = "https://prompt-studio-ai-git-forge-apk-forge-promptstudioai.vercel.app";
+const STABLE_FORGE_TEST_ORIGIN = "https://prompt-studio-ai-git-forge-apk-forge-prompt-studioai.vercel.app";
 const now = () => new Date();
 const requestRef = (db, id) => db.collection("apkForgeRequests").doc(id);
 const slotDate = () => now().toISOString().slice(0, 10);
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
           if (current.status !== "BUILDING" || current.buildId !== buildId) return;
           const slot = slotSnap.exists ? (slotSnap.data() || {}) : {};
           tx.update(ref, { status: current.previousBuildId ? "READY" : "BUILD_FAILED", websiteUrl: current.previousWebsiteUrl || STABLE_FORGE_TEST_ORIGIN, buildId: current.previousBuildId || null, buildDispatchStatus: "FAILED", buildDispatchError: String(error?.message || "Build dispatch failed.").slice(0, 500), buildDispatchFailedAt: now(), buildSlotReserved: false, updatedAt: now() });
-          if (slotSnap.exists) tx.update(slotRef, { reservedCount: Math.max(0, Number(slot.reservedCount || 0) - 1), updatedAt: now() });
+          if (slotSnap.exists) tx.update(slotRef, { reservedCount: Math.max(0, Number(slot.reservedCount || 0) - 1, updatedAt: now() });
         });
         throw error;
       }
