@@ -1,8 +1,18 @@
 name: APK Forge Build
 
+run-name: APK Forge · ${{ github.event.client_payload.forgeRequestId || github.event.inputs.forge_request_id || 'manual-test' }}
+
 on:
   workflow_dispatch:
     inputs:
+      forge_request_id:
+        description: 'Forge request ID'
+        required: true
+        type: string
+      build_id:
+        description: 'Unique Forge build ID'
+        required: true
+        type: string
       app_name:
         description: 'Android app display name'
         required: true
@@ -14,7 +24,7 @@ on:
         type: string
         default: 'https://forge.invalid'
       package_id:
-        description: 'Android application ID, e.g. com.example.myapp'
+        description: 'Android application ID'
         required: true
         type: string
         default: 'in.promptstudio.ai'
@@ -28,6 +38,8 @@ on:
         required: true
         type: string
         default: '1'
+  repository_dispatch:
+    types: [apk_forge_build]
   push:
     branches:
       - forge/apk-forge
@@ -39,11 +51,13 @@ permissions:
   contents: read
 
 env:
-  FORGE_APP_NAME: ${{ github.event.inputs.app_name || 'PromptStudio AI' }}
-  FORGE_WEB_ORIGIN: ${{ github.event.inputs.forge_web_origin || 'https://forge.invalid' }}
-  FORGE_PACKAGE_ID: ${{ github.event.inputs.package_id || 'in.promptstudio.ai' }}
-  FORGE_VERSION_NAME: ${{ github.event.inputs.version_name || '0.1.0' }}
-  FORGE_VERSION_CODE: ${{ github.event.inputs.version_code || '1' }}
+  FORGE_REQUEST_ID: ${{ github.event.client_payload.forgeRequestId || github.event.inputs.forge_request_id || 'manual-test' }}
+  FORGE_BUILD_ID: ${{ github.event.client_payload.buildId || github.event.inputs.build_id || github.run_id }}
+  FORGE_APP_NAME: ${{ github.event.client_payload.appName || github.event.inputs.app_name || 'PromptStudio AI' }}
+  FORGE_WEB_ORIGIN: ${{ github.event.client_payload.forgeWebOrigin || github.event.inputs.forge_web_origin || 'https://forge.invalid' }}
+  FORGE_PACKAGE_ID: ${{ github.event.client_payload.packageId || github.event.inputs.package_id || 'in.promptstudio.ai' }}
+  FORGE_VERSION_NAME: ${{ github.event.client_payload.versionName || github.event.inputs.version_name || '0.1.0' }}
+  FORGE_VERSION_CODE: ${{ github.event.client_payload.versionCode || github.event.inputs.version_code || '1' }}
 
 jobs:
   build-apk:
@@ -77,6 +91,10 @@ jobs:
               raise SystemExit('APP_NAME cannot be empty')
           if not os.environ['FORGE_VERSION_NAME'].strip():
               raise SystemExit('VERSION_NAME cannot be empty')
+          if not os.environ['FORGE_REQUEST_ID'].strip() or not os.environ['FORGE_BUILD_ID'].strip():
+              raise SystemExit('FORGE_REQUEST_ID and FORGE_BUILD_ID are required')
+          print(f'Forge request: {os.environ["FORGE_REQUEST_ID"]}')
+          print(f'Forge build: {os.environ["FORGE_BUILD_ID"]}')
           print(f'Forge origin accepted: {origin}')
           print(f'Package ID accepted: {package_id}')
           print(f'App: {os.environ["FORGE_APP_NAME"]} {os.environ["FORGE_VERSION_NAME"]} (code {os.environ["FORGE_VERSION_CODE"]})')
@@ -118,7 +136,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: promptstudio-forge-debug-apk-${{ github.run_number }}
+          name: promptstudio-forge-${{ env.FORGE_BUILD_ID }}
           path: apk-forge/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
