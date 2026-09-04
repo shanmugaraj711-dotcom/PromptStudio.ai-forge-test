@@ -137,6 +137,18 @@ jobs:
           print(f'App: {os.environ["FORGE_APP_NAME"]} {os.environ["FORGE_VERSION_NAME"]} (code {os.environ["FORGE_VERSION_CODE"]})')
           PY
 
+      - name: Verify source website is reachable
+        run: |
+          set -euo pipefail
+          url="$FORGE_WEB_ORIGIN"
+          echo "Checking Forge source origin: $url"
+          if ! curl --fail --silent --show-error --location --max-time 15 --retry 2 --retry-delay 2 --output /dev/null "$url"; then
+            echo "Forge source origin is unreachable or returned an HTTP error: $url" >&2
+            echo "Refusing to build an APK against a dead source URL." >&2
+            exit 1
+          fi
+          echo "Forge source origin is reachable: $url"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
