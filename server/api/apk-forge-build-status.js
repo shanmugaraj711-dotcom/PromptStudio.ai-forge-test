@@ -1,5 +1,5 @@
 import { adminDb, json, requireUser } from "./_firebaseAdmin.js";
-import { getForgeArtifact, listForgeArtifacts, listForgeBuildRuns } from "./_forgeGitHub.js";
+import { listForgeArtifacts, listForgeBuildRuns } from "./_forgeGitHub.js";
 
 const serializeDate = (value) => value?.toDate?.()?.toISOString?.() || value || null;
 const requestRef = (db, id) => db.collection("apkForgeRequests").doc(id);
@@ -24,7 +24,6 @@ const reconcile = async (db, ref, request) => {
     });
     return { ...request, status: "BUILD_FAILED", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null };
   }
-
   const artifacts = await listForgeArtifacts(run.id);
   const artifact = artifacts.find((item) => item?.name === `promptstudio-forge-${request.buildId}` && !item.expired);
   if (!artifact) fail(502, "forge_artifact_missing", "The Forge build completed but its APK artifact was not found.");
