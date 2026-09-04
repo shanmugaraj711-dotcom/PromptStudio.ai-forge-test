@@ -40,12 +40,6 @@ on:
         default: '1'
   repository_dispatch:
     types: [apk_forge_build]
-  push:
-    branches:
-      - forge/apk-forge
-    paths:
-      - 'apk-forge/android/**'
-      - '.github/workflows/apk-forge-build.yml'
 
 permissions:
   contents: read
