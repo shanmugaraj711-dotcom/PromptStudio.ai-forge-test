@@ -30,7 +30,7 @@ export default function ApkForgeReview({ api }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const load = useCallback(async () => { setLoading(true); setError(""); try { const body = await api("/api/apk-forge-review"); setRequests(body.requests || []); } catch (cause) { setError(cause.message || "Could not load APK Forge review queue."); } finally { setLoading(false); } }, [api]);
+  const load = useCallback(async () => { setLoading(true); setError(""); try { const body = await api("/api/apk-forge-review"); setRequests(body.requests || []); setBuilds(body.builds || []); } catch (cause) { setError(cause.message || "Could not load APK Forge review queue."); } finally { setLoading(false); } }, [api]);
   useEffect(() => { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, [load]);
 
   const addBuild = useCallback((body) => { setBuilds((current) => { const item = { id: body.forgeRequestId, ...body }; const next = current.filter((entry) => entry.id !== item.id); return [item, ...next]; }); }, []);
