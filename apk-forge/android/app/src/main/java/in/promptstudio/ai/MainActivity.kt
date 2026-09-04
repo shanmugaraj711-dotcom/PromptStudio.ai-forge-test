@@ -3,22 +3,28 @@ package promptstudio.ai
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
-import androidx.webkit.WebSettingsCompat
-import androidx.webkit.WebViewFeature
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
+    private lateinit var progressBar: ProgressBar
+    private lateinit var offlineView: View
     private var fileCallback: ValueCallback<Array<Uri>>? = null
 
     private val appOrigin = BuildConfig.FORGE_WEB_ORIGIN.trimEnd('/')
@@ -28,67 +34,183 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val root = FrameLayout(this)
-        webView = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.allowFileAccess = false
-            settings.allowContentAccess = true
-            settings.mediaPlaybackRequiresUserGesture = true
-            settings.setSupportMultipleWindows(false)
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                    return handleUrl(request.url)
-                }
-            }
-            webChromeClient = object : WebChromeClient() {
-                override fun onShowFileChooser(
-                    webView: WebView,
-                    filePathCallback: ValueCallback<Array<Uri>>,
-                    fileChooserParams: FileChooserParams
-                ): Boolean {
-                    fileCallback?.onReceiveValue(null)
-                    fileCallback = filePathCallback
-                    return try {
-                        startActivityForResult(fileChooserParams.createIntent().apply {
-                            addCategory(Intent.CATEGORY_OPENABLE)
-                        }, FILE_CHOOSER_REQUEST)
-                        true
-                    } catch (_: ActivityNotFoundException) {
-                        fileCallback = null
-                        Toast.makeText(this@MainActivity, "No file picker is available.", Toast.LENGTH_SHORT).show()
-                        false
-                    }
-                }
-            }
-        }
-
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
-            WebSettingsCompat.setForceDark(webView.settings, WebSettingsCompat.FORCE_DARK_OFF)
-        }
+        webView = WebView(this)
+        progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal)
+        offlineView = createOfflineView()
 
         root.addView(webView, FrameLayout.LayoutParams(-1, -1))
+        root.addView(progressBar, FrameLayout.LayoutParams(-1, 6))
+        root.addView(offlineView, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
-        webView.loadUrl(appOrigin)
+
+        setupWebView()
+
+        if (savedInstanceState == null) {
+            loadIfOnline()
+        } else {
+            webView.restoreState(savedInstanceState)
+        }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (webView.canGoBack()) webView.goBack() else finish()
+                if (webView.canGoBack()) {
+                    webView.goBack()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
             }
         })
     }
 
-    private fun handleUrl(uri: Uri): Boolean {
-        val allowed = uri.scheme == "https" && uri.host == Uri.parse(appOrigin).host
-        if (allowed) return false
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun setupWebView() {
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            databaseEnabled = true
+            allowFileAccess = false
+            allowContentAccess = true
+            mediaPlaybackRequiresUserGesture = true
+            setSupportMultipleWindows(false)
+            cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+        }
 
-        if (uri.scheme == "https" || uri.scheme == "http") {
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW, uri))
-            } catch (_: ActivityNotFoundException) {
-                Toast.makeText(this, "Unable to open this link.", Toast.LENGTH_SHORT).show()
+        val cookies = android.webkit.CookieManager.getInstance()
+        cookies.setAcceptCookie(true)
+        cookies.setAcceptThirdPartyCookies(webView, true)
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: WebResourceRequest
+            ): Boolean {
+                val uri = request.url
+
+                // Keep ALL normal web navigation inside the native shell.
+                // This is the critical fix: OAuth/auth redirects, Vercel redirects,
+                // payment return pages, and other HTTPS pages must not be handed to Chrome.
+                if (uri.scheme == "https" || uri.scheme == "http") {
+                    return false
+                }
+
+                // Non-web schemes (upi://, intent://, mailto:, tel:, etc.) belong to
+                // Android's external handlers rather than the WebView.
+                return try {
+                    startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    true
+                } catch (_: ActivityNotFoundException) {
+                    Toast.makeText(this@MainActivity, "Unable to open this link.", Toast.LENGTH_SHORT).show()
+                    true
+                }
+            }
+
+            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                progressBar.visibility = View.VISIBLE
+                offlineView.visibility = View.GONE
+                webView.visibility = View.VISIBLE
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                super.onPageFinished(view, url)
+                progressBar.visibility = View.GONE
+                offlineView.visibility = View.GONE
+                webView.visibility = View.VISIBLE
+            }
+
+            override fun onReceivedError(
+                view: WebView,
+                request: WebResourceRequest,
+                error: WebResourceError
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request.isForMainFrame) showOfflineState()
             }
         }
-        return true
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onProgressChanged(view: WebView, newProgress: Int) {
+                progressBar.progress = newProgress
+                progressBar.visibility = if (newProgress in 1..99) View.VISIBLE else View.GONE
+            }
+
+            override fun onShowFileChooser(
+                webView: WebView,
+                filePathCallback: ValueCallback<Array<Uri>>,
+                fileChooserParams: FileChooserParams
+            ): Boolean {
+                fileCallback?.onReceiveValue(null)
+                fileCallback = filePathCallback
+                return try {
+                    startActivityForResult(
+                        fileChooserParams.createIntent().apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                        },
+                        FILE_CHOOSER_REQUEST
+                    )
+                    true
+                } catch (_: ActivityNotFoundException) {
+                    fileCallback = null
+                    Toast.makeText(this@MainActivity, "No file picker is available.", Toast.LENGTH_SHORT).show()
+                    false
+                }
+            }
+        }
+    }
+
+    private fun loadIfOnline() {
+        if (isOnline()) {
+            progressBar.visibility = View.VISIBLE
+            webView.visibility = View.VISIBLE
+            offlineView.visibility = View.GONE
+            webView.loadUrl(appOrigin)
+        } else {
+            showOfflineState()
+        }
+    }
+
+    private fun showOfflineState() {
+        progressBar.visibility = View.GONE
+        webView.visibility = View.GONE
+        offlineView.visibility = View.VISIBLE
+    }
+
+    private fun createOfflineView(): View {
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER
+            setPadding(48, 48, 48, 48)
+            visibility = View.GONE
+        }
+
+        val title = TextView(this).apply {
+            text = "You're offline"
+            textSize = 22f
+            gravity = android.view.Gravity.CENTER
+        }
+        val message = TextView(this).apply {
+            text = "Connect to the internet and try again."
+            textSize = 16f
+            gravity = android.view.Gravity.CENTER
+            setPadding(0, 16, 0, 24)
+        }
+        val retry = android.widget.Button(this).apply {
+            text = "Try again"
+            setOnClickListener { loadIfOnline() }
+        }
+
+        container.addView(title)
+        container.addView(message)
+        container.addView(retry)
+        return container
+    }
+
+    private fun isOnline(): Boolean {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     @Deprecated("Android framework callback retained for WebView file chooser compatibility")
@@ -100,6 +222,11 @@ class MainActivity : AppCompatActivity() {
         } else null
         fileCallback?.onReceiveValue(results)
         fileCallback = null
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        webView.saveState(outState)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onDestroy() {
