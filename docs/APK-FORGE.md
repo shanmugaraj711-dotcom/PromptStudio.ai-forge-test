@@ -51,9 +51,31 @@ A successful payment does not itself authorize a build.
 
 The current APK Forge build price is `PRODUCT_CONFIG.pricing.apkForge.buildPriceInr` and the server is the sole authority for the Razorpay order amount. The client must never supply or override the payable amount.
 
-### Immutable identifiers
+### Immutable identifiers and order idempotency
 
 Every paid request receives a server-generated `forgeRequestId`. The request stores the associated Razorpay order/payment identifiers and they are never replaced by client-supplied values.
+
+Razorpay's documented Orders API does not expose the same request-idempotency mechanism used by its payout APIs, so Forge does not pretend an unsupported Razorpay idempotency header exists. Instead, Forge makes order creation idempotent at our application boundary:
+
+1. A Firestore transaction reserves order creation for the `forgeRequestId`.
+2. A second concurrent request sees the reservation and does not create another order.
+3. The Razorpay receipt is deterministically derived from the `forgeRequestId` and is unique.
+4. If the process dies after Razorpay creates the order but before Firestore stores its ID, a later retry queries Razorpay by that receipt and validates the exact amount, currency, `forgeRequestId`, and user note before attaching the existing order.
+5. A request with an already-linked order always reuses that order rather than creating another one.
+
+This closes the customer double-click/network-retry case without relying on an undocumented provider feature. Razorpay documents receipt as a unique internal reference and supports fetching orders by receipt. cite_note_razorpay_order_receipt
+
+### Payment verification and reconciliation
+
+Browser checkout verification and the Razorpay webhook both require a captured Razorpay payment and exact amount/order ownership before transitioning:
+
+`PAYMENT_PENDING → PENDING_REVIEW`
+
+The transition is compare-and-set guarded, so webhook + browser callback + reconciliation cannot promote the same request twice.
+
+A scheduled server-side reconciliation endpoint runs hourly. It finds Forge requests still `PAYMENT_PENDING`, fetches the Razorpay order and its linked payments, and promotes the request only when a captured payment exactly matches the stored order amount. This is the recovery path for a successful Razorpay payment whose webhook or browser callback was delayed/missed. Razorpay documents both fetching an order and fetching all payments for an order. cite_note_razorpay_reconciliation
+
+The reconciliation endpoint is protected by `CRON_SECRET`/`APK_FORGE_RECONCILE_SECRET`; it is not a public customer action.
 
 ### State-transition guard
 
@@ -113,4 +135,12 @@ A scheduled server-side job is required to process paid requests that remain `PE
 
 ## Current branch scope
 
-The generic Android wrapper and isolated debug build pipeline are implemented on `forge/apk-forge`. Payment/review integration must preserve the state and refund contracts above before any live customer build button is enabled. No production deployment or merge is performed automatically.
+The generic Android wrapper, isolated debug build pipeline, server-priced payment order flow, payment verification, webhook promotion, and hourly Razorpay reconciliation path are implemented on `forge/apk-forge`. Payment/review integration must preserve the state and refund contracts above before any live customer build button is enabled. No production deployment or merge is performed automatically.
+
+<!--
+Reference notes for the external Razorpay documentation used when this contract was designed:
+- Orders API: https://razorpay.com/docs/api/orders/create/
+- Fetch orders by receipt: https://razorpay.com/docs/api/orders/fetch-all/
+- Fetch payments for an order: https://razorpay.com/docs/api/orders/fetch-payments/
+- Fetch an order: https://razorpay.com/docs/api/orders/fetch-with-id/
+-->
