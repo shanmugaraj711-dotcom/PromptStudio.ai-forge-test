@@ -1,0 +1,7 @@
+{
+  "appName": "My Website App",
+  "webOrigin": "https://example.invalid",
+  "packageId": "com.example.mywebsiteapp",
+  "versionName": "1.0.0",
+  "versionCode": 1
+}
