@@ -22,14 +22,7 @@ const looksExecutable = (file) => {
 const sanitizeReference = (file) => {
   const size = Number(file?.size || file?.bytes || 0);
   const executable = looksExecutable(file);
-  return {
-    name: normalizeName(file?.name),
-    size: Number.isFinite(size) && size >= 0 ? size : null,
-    mimeType: String(file?.mimeType || file?.type || "unknown").slice(0, 160),
-    detectedType: executable ? "executable_or_binary" : String(file?.detectedType || file?.kind || "unknown").slice(0, 80),
-    executable,
-    contentAccepted: !executable && typeof file?.content === "string" && file.content.length <= MAX_REFERENCE_TEXT,
-  };
+  return { name: normalizeName(file?.name), size: Number.isFinite(size) && size >= 0 ? size : null, mimeType: String(file?.mimeType || file?.type || "unknown").slice(0, 160), detectedType: executable ? "executable_or_binary" : String(file?.detectedType || file?.kind || "unknown").slice(0, 80), executable, contentAccepted: !executable && typeof file?.content === "string" && file.content.length <= MAX_REFERENCE_TEXT };
 };
 const validateWebsiteUrl = (value) => {
   const raw = String(value || "").trim();
@@ -40,27 +33,10 @@ const validateWebsiteUrl = (value) => {
   if (url.protocol !== "https:" || url.username || url.password || url.port || url.pathname !== "/" || url.search || url.hash) throw Object.assign(new Error("Website URL must be HTTPS and contain only an origin."), { status: 400, code: "invalid_website_url" });
   return url.origin;
 };
-const buildBrief = ({ description, references, platform, outputFormat, websiteUrl }) => {
+const buildBrief = ({ description, references, outputFormat, websiteUrl }) => {
   const executableReferences = references.filter((item) => item.executable);
   const safeReferences = references.map((item) => `- ${item.name} | ${item.detectedType} | ${item.size ?? "unknown"} bytes | executable/binary=${item.executable}`).join("\n");
-  return {
-    mode: "apk-forge",
-    platform: "android",
-    outputFormat: outputFormat || "build-ready-android-brief",
-    websiteUrl: websiteUrl || null,
-    intent: description,
-    evidence: safeReferences,
-    warnings: executableReferences.length ? ["One or more references appear to be executable/binary content. They were classified as reference evidence only and must never be executed."] : [],
-    implementation: {
-      appArchitecture: "Choose a maintainable Android architecture appropriate to the requirements; prefer Kotlin and Jetpack Compose unless evidence requires otherwise.",
-      screens: "Derive screens and navigation from screenshots, documentation and the customer's stated intent.",
-      behavior: "Preserve only behavior supported by evidence. Mark inferred behavior as an assumption.",
-      accessibility: "Include semantics, touch targets, contrast, dynamic text and screen-reader support.",
-      responsive: "Support common Android phone sizes and orientations where relevant.",
-      acceptance: "Define testable acceptance criteria for every major screen and flow.",
-    },
-    handoff: "This response is a build specification/handoff. Android compilation must occur in an isolated build runner, never inside the production serverless runtime.",
-  };
+  return { mode: "apk-forge", platform: "android", outputFormat: outputFormat || "build-ready-android-brief", websiteUrl: websiteUrl || null, intent: description, evidence: safeReferences, warnings: executableReferences.length ? ["One or more references appear to be executable/binary content. They were classified as reference evidence only and must never be executed."] : [], implementation: { appArchitecture: "Choose a maintainable Android architecture appropriate to the requirements; prefer Kotlin and Jetpack Compose unless evidence requires otherwise.", screens: "Derive screens and navigation from screenshots, documentation and the customer's stated intent.", behavior: "Preserve only behavior supported by evidence. Mark inferred behavior as an assumption.", accessibility: "Include semantics, touch targets, contrast, dynamic text and screen-reader support.", responsive: "Support common Android phone sizes and orientations where relevant.", acceptance: "Define testable acceptance criteria for every major screen and flow." }, handoff: "This response is a build specification/handoff. Android compilation must occur in an isolated build runner, never inside the production serverless runtime." };
 };
 
 export default async function handler(req, res) {
@@ -73,41 +49,20 @@ export default async function handler(req, res) {
     const outputFormat = String(body.outputFormat || "build-ready-android-brief").slice(0, 80);
     const websiteUrl = validateWebsiteUrl(body.websiteUrl || body.url);
     const referencesInput = Array.isArray(body.references) ? body.references : [];
-
     if (!description) return res.status(400).json({ code: "description_required", message: "Tell Forge what the app should do and what you want built." });
     if (description.length > MAX_DESCRIPTION) return res.status(413).json({ code: "description_too_large", message: `Description must be ${MAX_DESCRIPTION} characters or less.` });
     if (platform !== "android") return res.status(400).json({ code: "unsupported_platform", message: "APK Forge currently targets Android APK builds." });
     if (referencesInput.length > MAX_REFERENCE_FILES) return res.status(413).json({ code: "too_many_references", message: `Forge accepts at most ${MAX_REFERENCE_FILES} references.` });
-
     const sanitized = referencesInput.map(sanitizeReference);
     const oversized = sanitized.find((file) => file.size !== null && file.size > MAX_FILE_BYTES);
     if (oversized) return res.status(413).json({ code: "reference_too_large", message: `${oversized.name} exceeds the 25 MB Forge reference limit.` });
-
-    const brief = buildBrief({ description, references: sanitized, platform, outputFormat, websiteUrl });
+    const brief = buildBrief({ description, references: sanitized, outputFormat, websiteUrl });
     const config = await getRuntimeProductConfig(adminDb());
     const pricing = config.pricing.apkForge || {};
     if (pricing.enabled !== true) return res.status(503).json({ code: "apk_forge_disabled", message: "APK Forge is temporarily unavailable." });
-
     const forgeRequestId = crypto.randomUUID().replace(/-/g, "");
     const createdAt = new Date();
-    await adminDb().collection("apkForgeRequests").doc(forgeRequestId).create({
-      forgeRequestId,
-      uid: user.uid,
-      status: "PAYMENT_REQUIRED",
-      description,
-      websiteUrl,
-      platform: "android",
-      outputFormat,
-      referenceCount: sanitized.length,
-      safeReferenceMetadata: sanitized,
-      forge: brief,
-      pricingVersion: "PRODUCT_CONFIG.pricing.apkForge",
-      amountInr: Number(pricing.buildPriceInr),
-      currency: String(pricing.currency || "INR").toUpperCase(),
-      createdAt,
-      updatedAt: createdAt,
-    });
-
+    await adminDb().collection("apkForgeRequests").doc(forgeRequestId).create({ forgeRequestId, uid: user.uid, status: "PAYMENT_REQUIRED", description, websiteUrl, platform: "android", outputFormat, referenceCount: sanitized.length, safeReferenceMetadata: sanitized, forge: brief, pricingVersion: "PRODUCT_CONFIG.pricing.apkForge", amountInr: Number(pricing.buildPriceInr), currency: String(pricing.currency || "INR").toUpperCase(), createdAt, updatedAt: createdAt });
     return res.status(200).json({ ok: true, forgeRequestId, status: "PAYMENT_REQUIRED", amountInr: Number(pricing.buildPriceInr), currency: String(pricing.currency || "INR").toUpperCase(), forge: brief, referenceCount: sanitized.length, safeReferenceMetadata: sanitized });
   } catch (error) {
     console.error("APK Forge request creation failed", { code: error?.code || "unknown", status: error?.status });
