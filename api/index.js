@@ -1,6 +1,9 @@
 import adminBootstrapHandler from "../server/api/admin-bootstrap.js";
 import adminHandler from "../server/api/admin.js";
 import apkForgeHandler from "../server/api/apk-forge.js";
+import apkForgeOrderHandler from "../server/api/apk-forge-order.js";
+import apkForgeVerifyHandler from "../server/api/apk-forge-verify.js";
+import apkForgeReconcileHandler from "../server/api/apk-forge-reconcile.js";
 import feedbackHandler from "../server/api/feedback.js";
 import generatePromptCreditsHandler from "../server/api/generate-prompt-credits.js";
 import generatePromptHandler from "../server/api/generate-prompt.js";
@@ -22,6 +25,9 @@ const STATIC_HANDLERS = {
   "/api/admin-bootstrap": adminBootstrapHandler,
   "/api/admin": adminHandler,
   "/api/apk-forge": apkForgeHandler,
+  "/api/apk-forge-order": apkForgeOrderHandler,
+  "/api/apk-forge-verify": apkForgeVerifyHandler,
+  "/api/apk-forge-reconcile": apkForgeReconcileHandler,
   "/api/feedback": feedbackHandler,
   "/api/generate-prompt-credits": generatePromptCreditsHandler,
   "/api/generate-prompt": generatePromptHandler,
