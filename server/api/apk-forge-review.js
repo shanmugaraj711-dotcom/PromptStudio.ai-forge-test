@@ -114,7 +114,7 @@ export default async function handler(req, res) {
           if (current.status !== "BUILDING" || current.buildId !== buildId) return;
           const slot = slotSnap.exists ? (slotSnap.data() || {}) : {};
           tx.update(ref, { status: current.previousBuildId ? "READY" : "BUILD_FAILED", websiteUrl: current.previousWebsiteUrl || STABLE_FORGE_TEST_ORIGIN, buildId: current.previousBuildId || null, buildDispatchStatus: "FAILED", buildDispatchError: String(error?.message || "Build dispatch failed.").slice(0, 500), buildDispatchFailedAt: now(), buildSlotReserved: false, updatedAt: now() });
-          if (slotSnap.exists) tx.update(slotRef, { reservedCount: Math.max(0, Number(slot.reservedCount || 0) - 1, updatedAt: now() });
+          if (slotSnap.exists) tx.update(slotRef, { reservedCount: Math.max(0, Number(slot.reservedCount || 0) - 1), updatedAt: now() });
         });
         throw error;
       }
