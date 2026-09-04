@@ -1,4 +1,5 @@
 import { adminDb, json, requireUser } from "./_firebaseAdmin.js";
+import { requireFounderAdmin } from "./_adminSecurity.js";
 import { listForgeArtifacts, listForgeBuildRuns } from "./_forgeGitHub.js";
 
 const serializeDate = (value) => value?.toDate?.()?.toISOString?.() || value || null;
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
     const snap = await ref.get();
     if (!snap.exists) fail(404, "forge_request_not_found", "Forge request was not found.");
     const request = snap.data() || {};
-    if (String(request.uid || "") !== decoded.uid) fail(403, "forge_request_forbidden", "You do not have access to this Forge request.");
+    if (String(request.uid || "") !== decoded.uid) await requireFounderAdmin(req, { write: false });
     const current = await reconcile(db, ref, request);
     return json(res, 200, { ok: true, forgeRequestId: id, status: current.status, buildId: current.buildId || null, githubRunId: current.githubRunId || null, githubRunStatus: current.githubRunStatus || null, githubRunConclusion: current.githubRunConclusion || null, githubRunUrl: current.githubRunUrl || null, artifactId: current.artifactId || null, artifactName: current.artifactName || null, artifactSize: current.artifactSize || null, createdAt: serializeDate(current.createdAt), paidAt: serializeDate(current.paidAt), buildStartedAt: serializeDate(current.buildStartedAt), buildFinishedAt: serializeDate(current.buildFinishedAt), verifiedAt: serializeDate(current.verifiedAt) });
   } catch (error) {
