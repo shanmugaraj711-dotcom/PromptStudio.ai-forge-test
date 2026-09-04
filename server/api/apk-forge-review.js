@@ -16,8 +16,14 @@ export default async function handler(req, res) {
     const actor = await requireFounderAdmin(req, { write: req.method !== "GET" });
     const db = adminDb();
     if (req.method === "GET") {
-      const snap = await db.collection("apkForgeRequests").where("status", "==", "PENDING_REVIEW").orderBy("createdAt", "asc").limit(100).get();
-      return json(res, 200, { ok: true, requests: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) });
+      const snap = await db.collection("apkForgeRequests").where("status", "==", "PENDING_REVIEW").limit(100).get();
+      const requests = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      requests.sort((a, b) => {
+        const left = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
+        const right = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
+        return left - right;
+      });
+      return json(res, 200, { ok: true, requests });
     }
     if (req.method !== "POST") return json(res, 405, { code: "method_not_allowed", message: "Forge review accepts GET and POST requests only." });
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
