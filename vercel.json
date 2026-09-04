@@ -3,9 +3,6 @@
   "functions": {
     "api/index.js": { "maxDuration": 30 }
   },
-  "crons": [
-    { "path": "/api/apk-forge-reconcile", "schedule": "0 * * * *" }
-  ],
   "headers": [
     {
       "source": "/robots.txt",
