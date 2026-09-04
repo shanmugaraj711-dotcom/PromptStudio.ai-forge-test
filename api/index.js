@@ -7,6 +7,7 @@ import apkForgeReconcileHandler from "../server/api/apk-forge-reconcile.js";
 import apkForgeReviewHandler from "../server/api/apk-forge-review.js";
 import apkForgeRefundHandler from "../server/api/apk-forge-refund.js";
 import apkForgeExpiryHandler from "../server/api/apk-forge-expiry.js";
+import apkForgeBuildStatusHandler from "../server/api/apk-forge-build-status.js";
 import feedbackHandler from "../server/api/feedback.js";
 import generatePromptCreditsHandler from "../server/api/generate-prompt-credits.js";
 import generatePromptHandler from "../server/api/generate-prompt.js";
@@ -34,6 +35,7 @@ const STATIC_HANDLERS = {
   "/api/apk-forge-review": apkForgeReviewHandler,
   "/api/apk-forge-refund": apkForgeRefundHandler,
   "/api/apk-forge-expiry": apkForgeExpiryHandler,
+  "/api/apk-forge-build-status": apkForgeBuildStatusHandler,
   "/api/feedback": feedbackHandler,
   "/api/generate-prompt-credits": generatePromptCreditsHandler,
   "/api/generate-prompt": generatePromptHandler,
