@@ -19,6 +19,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout Forge branch
+        uses: actions/checkout@v4
+
+      - name: Audit Forge branch for stale Vercel aliases
+        run: |
+          set -euo pipefail
+          bad_alias='prompt-studio-ai-git-forge-apk-forge-promptstudioai.vercel.app'
+          bad_suffix='promptstudioai.vercel.app'
+          echo "Searching entire Forge branch for stale alias: $bad_alias"
+          if git grep -n -F -- "$bad_alias" -- .; then
+            echo "Stale Forge alias found; refusing reachability test." >&2
+            exit 1
+          fi
+          echo "Zero matches for stale Forge alias."
+          echo "Searching entire Forge branch for unhyphenated Vercel hostname suffix: $bad_suffix"
+          if git grep -n -F -- "$bad_suffix" -- .; then
+            echo "Unhyphenated Vercel hostname found; refusing reachability test." >&2
+            exit 1
+          fi
+          echo "Zero matches for unhyphenated Vercel hostname suffix."
+
       - name: Verify protected Forge origin with automation bypass
         env:
           FORGE_WEB_ORIGIN: https://prompt-studio-ai-git-forge-apk-forge-prompt-studioai.vercel.app
