@@ -2,6 +2,7 @@ import { adminDb, json } from "./_firebaseAdmin.js";
 import { requireFounderAdmin } from "./_adminSecurity.js";
 import { dispatchForgeBuild } from "./_forgeGitHub.js";
 import { getRuntimeProductConfig } from "./_productConfig.js";
+import { isConfigured, razorpayRequest } from "./_razorpay.js";
 
 const ACTIVE = new Set(["PENDING_REVIEW"]);
 const REFUND_STATES = new Set(["NOT_REQUIRED", "PENDING"]);
@@ -10,6 +11,18 @@ const requestRef = (db, id) => db.collection("apkForgeRequests").doc(id);
 const slotDate = () => now().toISOString().slice(0, 10);
 const fail = (status, code, message) => { const error = new Error(message); error.status = status; error.code = code; throw error; };
 const buildIdFor = (id) => `forge_${String(id || "").replace(/[^A-Za-z0-9_-]/g, "-")}_${Date.now().toString(36)}`;
+
+const verifyCapturedPayment = async (request) => {
+  if (!isConfigured()) fail(503, "payment_not_configured", "Razorpay is not configured.");
+  if (!request.paymentId || !request.razorpayOrderId) fail(409, "forge_payment_missing", "A verified Razorpay payment reference is required before approval.");
+  const order = await razorpayRequest(`/orders/${encodeURIComponent(request.razorpayOrderId)}`);
+  const expectedAmount = Number(request.amountPaise || Number(request.amountInr) * 100);
+  if (order.id !== request.razorpayOrderId || order.currency !== String(request.currency || "INR") || Number(order.amount) !== expectedAmount || order.status !== "paid") fail(409, "forge_payment_not_verified", "Razorpay does not currently confirm this Forge request as paid.");
+  const payments = await razorpayRequest(`/orders/${encodeURIComponent(request.razorpayOrderId)}/payments`);
+  const payment = Array.isArray(payments?.items) ? payments.items.find((item) => item.id === request.paymentId) : null;
+  if (!payment || payment.order_id !== request.razorpayOrderId || payment.status !== "captured" || Number(payment.amount) !== expectedAmount) fail(409, "forge_payment_not_verified", "The linked Razorpay payment is not a captured payment for this Forge order.");
+  return { order, payment };
+};
 
 export default async function handler(req, res) {
   try {
@@ -47,6 +60,12 @@ export default async function handler(req, res) {
       });
       return json(res, 200, { ok: true, forgeRequestId, ...result });
     }
+
+    const currentSnap = await ref.get();
+    if (!currentSnap.exists) return json(res, 404, { code: "forge_request_not_found", message: "Forge request was not found." });
+    const currentRequest = currentSnap.data() || {};
+    if (!ACTIVE.has(currentRequest.status)) return json(res, 409, { code: "forge_review_conflict", message: `Forge request is already ${currentRequest.status}.` });
+    await verifyCapturedPayment(currentRequest);
 
     const config = await getRuntimeProductConfig(db);
     const forgeConfig = config.pricing?.apkForge || {};
