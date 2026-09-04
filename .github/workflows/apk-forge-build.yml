@@ -55,6 +55,7 @@ env:
   FORGE_PACKAGE_ID: ${{ github.event.client_payload.packageId || github.event.inputs.package_id || '' }}
   FORGE_VERSION_NAME: ${{ github.event.client_payload.versionName || github.event.inputs.version_name || '' }}
   FORGE_VERSION_CODE: ${{ github.event.client_payload.versionCode || github.event.inputs.version_code || '' }}
+  VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
 jobs:
   build-apk:
@@ -142,7 +143,9 @@ jobs:
           set -euo pipefail
           url="$FORGE_WEB_ORIGIN"
           echo "Checking Forge source origin: $url"
-          if ! curl --fail --silent --show-error --location --max-time 15 --retry 2 --retry-delay 2 --output /dev/null "$url"; then
+          if ! curl --fail --silent --show-error --location --max-time 15 --retry 2 --retry-delay 2 \
+            -H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET" \
+            --output /dev/null "$url"; then
             echo "Forge source origin is unreachable or returned an HTTP error: $url" >&2
             echo "Refusing to build an APK against a dead source URL." >&2
             exit 1
