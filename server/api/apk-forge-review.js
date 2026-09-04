@@ -7,6 +7,7 @@ import { isConfigured, razorpayRequest } from "./_razorpay.js";
 const ACTIVE = new Set(["PENDING_REVIEW"]);
 const REFUND_STATES = new Set(["NOT_REQUIRED", "PENDING"]);
 const BUILD_STATUSES = ["BUILDING", "VERIFYING", "READY", "BUILD_FAILED"];
+const STABLE_FORGE_TEST_ORIGIN = "https://prompt-studio-ai-git-forge-apk-forge-promptstudioai.vercel.app";
 const now = () => new Date();
 const requestRef = (db, id) => db.collection("apkForgeRequests").doc(id);
 const slotDate = () => now().toISOString().slice(0, 10);
@@ -52,7 +53,7 @@ export default async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
     const forgeRequestId = String(body.forgeRequestId || "").trim();
     const decision = String(body.decision || "").trim().toUpperCase();
-    if (!forgeRequestId || !["APPROVE", "REJECT"].includes(decision)) return json(res, 400, { code: "invalid_review", message: "Forge request ID and APPROVE/REJECT decision are required." });
+    if (!forgeRequestId || !["APPROVE", "REJECT", "REBUILD_STABLE_TEST"].includes(decision)) return json(res, 400, { code: "invalid_review", message: "Forge request ID and a supported review decision are required." });
     const ref = requestRef(db, forgeRequestId);
 
     if (decision === "REJECT") {
@@ -69,6 +70,54 @@ export default async function handler(req, res) {
         return { status: "REJECTED", refundRequired: true };
       });
       return json(res, 200, { ok: true, forgeRequestId, ...result });
+    }
+
+    if (decision === "REBUILD_STABLE_TEST") {
+      const currentSnap = await ref.get();
+      if (!currentSnap.exists) return json(res, 404, { code: "forge_request_not_found", message: "Forge request was not found." });
+      const currentRequest = currentSnap.data() || {};
+      if (!["READY", "BUILD_FAILED"].includes(currentRequest.status)) return json(res, 409, { code: "forge_rebuild_conflict", message: `Stable test rebuild requires an already approved READY or BUILD_FAILED request; current status is ${currentRequest.status}.` });
+      await verifyCapturedPayment(currentRequest);
+
+      const config = await getRuntimeProductConfig(db);
+      const forgeConfig = config.pricing?.apkForge || {};
+      const dailyLimit = Math.max(1, Number(forgeConfig.dailyBuildLimit || 5));
+      const buildDate = slotDate();
+      const slotRef = db.collection("apkForgeBuildSlots").doc(buildDate);
+      const buildId = buildIdFor(forgeRequestId);
+      const approved = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) fail(404, "forge_request_not_found", "Forge request was not found.");
+        const request = snap.data() || {};
+        if (!["READY", "BUILD_FAILED"].includes(request.status)) fail(409, "forge_rebuild_conflict", `Forge request is already ${request.status}.`);
+        const slotSnap = await tx.get(slotRef);
+        const slot = slotSnap.exists ? (slotSnap.data() || {}) : {};
+        const reserved = Number(slot.reservedCount || 0);
+        if (reserved >= dailyLimit) fail(429, "forge_daily_build_limit", `The Forge daily build limit of ${dailyLimit} has been reached. Try again tomorrow.`);
+        const ts = now();
+        if (slotSnap.exists) tx.update(slotRef, { reservedCount: reserved + 1, updatedAt: ts });
+        else tx.set(slotRef, { date: buildDate, reservedCount: 1, dailyLimit, createdAt: ts, updatedAt: ts });
+        tx.update(ref, { status: "BUILDING", websiteUrl: STABLE_FORGE_TEST_ORIGIN, previousBuildId: request.buildId || null, previousWebsiteUrl: request.websiteUrl || null, buildId, buildDate, buildSlotReserved: true, buildDispatchStatus: "DISPATCH_PENDING", buildStartedAt: ts, rebuildReason: "Founder-approved stable Forge test rebuild using existing paid request.", rebuildApprovedAt: ts, rebuildApprovedBy: actor.uid, updatedAt: ts });
+        return { ...request, buildId, websiteUrl: STABLE_FORGE_TEST_ORIGIN };
+      });
+
+      try {
+        await dispatchForgeBuild({ forgeRequestId, buildId, appName: approved.appName || "PromptStudio AI", forgeWebOrigin: STABLE_FORGE_TEST_ORIGIN, packageId: approved.packageId || "in.promptstudio.ai", versionName: approved.versionName || "0.1.0", versionCode: approved.versionCode || "1" });
+        await ref.set({ buildDispatchStatus: "DISPATCHED", buildDispatchedAt: now(), updatedAt: now() }, { merge: true });
+        return json(res, 200, { ok: true, forgeRequestId, status: "BUILDING", buildId, buildDispatchStatus: "DISPATCHED", websiteUrl: STABLE_FORGE_TEST_ORIGIN, reusedPayment: true, reusedApproval: true });
+      } catch (error) {
+        await db.runTransaction(async (tx) => {
+          const snap = await tx.get(ref);
+          const slotSnap = await tx.get(slotRef);
+          if (!snap.exists) return;
+          const current = snap.data() || {};
+          if (current.status !== "BUILDING" || current.buildId !== buildId) return;
+          const slot = slotSnap.exists ? (slotSnap.data() || {}) : {};
+          tx.update(ref, { status: current.previousBuildId ? "READY" : "BUILD_FAILED", websiteUrl: current.previousWebsiteUrl || STABLE_FORGE_TEST_ORIGIN, buildId: current.previousBuildId || null, buildDispatchStatus: "FAILED", buildDispatchError: String(error?.message || "Build dispatch failed.").slice(0, 500), buildDispatchFailedAt: now(), buildSlotReserved: false, updatedAt: now() });
+          if (slotSnap.exists) tx.update(slotRef, { reservedCount: Math.max(0, Number(slot.reservedCount || 0) - 1), updatedAt: now() });
+        });
+        throw error;
+      }
     }
 
     const currentSnap = await ref.get();
