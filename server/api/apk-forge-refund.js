@@ -5,9 +5,7 @@ import { isConfigured, razorpayRequest } from "./_razorpay.js";
 const BATCH_SIZE = 25;
 const MAX_ATTEMPTS = 5;
 const now = () => new Date();
-const refundRef = (db, id) => db.collection("apkForgeRequests").doc(id);
 const fail = (status, code, message) => { const error = new Error(message); error.status = status; error.code = code; throw error; };
-
 const refundKey = (forgeRequestId) => `forge-refund-${String(forgeRequestId || "").replace(/[^A-Za-z0-9_-]/g, "-")}`;
 const refundReceipt = (forgeRequestId) => `forge_refund_${String(forgeRequestId || "").replace(/[^A-Za-z0-9_-]/g, "-")}`;
 
@@ -19,11 +17,7 @@ const findMatchingRefund = async (request) => {
   const items = Array.isArray(data?.items) ? data.items : [];
   const expectedAmount = Number(request.amountPaise);
   const expectedReceipt = refundReceipt(forgeRequestId);
-  return items.find((refund) =>
-    String(refund?.payment_id || "") === paymentId &&
-    Number(refund?.amount) === expectedAmount &&
-    (String(refund?.receipt || "") === expectedReceipt || String(refund?.notes?.forgeRequestId || "") === forgeRequestId)
-  ) || null;
+  return items.find((refund) => String(refund?.payment_id || "") === paymentId && Number(refund?.amount) === expectedAmount && (String(refund?.receipt || "") === expectedReceipt || String(refund?.notes?.forgeRequestId || "") === forgeRequestId)) || null;
 };
 
 const processRefund = async (db, doc) => {
@@ -37,27 +31,19 @@ const processRefund = async (db, doc) => {
     const existingRefundId = String(request.refundProviderReference || "").trim();
     if (existingRefundId) {
       const existing = await razorpayRequest(`/refunds/${encodeURIComponent(existingRefundId)}`);
-      if (String(existing?.payment_id || "") !== String(request.paymentId) || Number(existing?.amount) !== Number(request.amountPaise)) {
-        fail(409, "forge_refund_reference_mismatch", "Stored refund reference does not match this Forge payment and amount.");
-      }
+      if (String(existing?.payment_id || "") !== String(request.paymentId) || Number(existing?.amount) !== Number(request.amountPaise)) fail(409, "forge_refund_reference_mismatch", "Stored refund reference does not match this Forge payment and amount.");
       await ref.set({ refundState: "COMPLETED", refundProviderStatus: existing.status || "processed", refundCompletedAt: now(), updatedAt: now() }, { merge: true });
       return { refunded: true, recovered: true };
     }
-
     const matchedRefund = await findMatchingRefund(request);
     if (matchedRefund?.id) {
       await ref.set({ refundState: "COMPLETED", refundProviderReference: matchedRefund.id, refundProviderStatus: matchedRefund.status || "processed", refundCompletedAt: now(), refundReconciledAt: now(), updatedAt: now() }, { merge: true });
       return { refunded: true, recovered: true };
     }
-
     const forgeRequestId = String(request.forgeRequestId || "").trim();
     const amount = Number(request.amountPaise);
     const receipt = refundReceipt(forgeRequestId);
-    const refund = await razorpayRequest(`/payments/${encodeURIComponent(request.paymentId)}/refund`, {
-      method: "POST",
-      headers: { "X-Refund-Idempotency": refundKey(forgeRequestId) },
-      body: JSON.stringify({ amount, receipt, notes: { forgeRequestId, reason: request.rejectionReason || "review_expired" } }),
-    });
+    const refund = await razorpayRequest(`/payments/${encodeURIComponent(request.paymentId)}/refund`, { method: "POST", headers: { "X-Refund-Idempotency": refundKey(forgeRequestId) }, body: JSON.stringify({ amount, receipt, notes: { forgeRequestId, reason: request.rejectionReason || "review_expired" } }) });
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists) return;
