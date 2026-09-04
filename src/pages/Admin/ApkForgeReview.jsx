@@ -12,7 +12,7 @@ const statusStyles = {
 const formatDate = (value) => { if (!value) return "—"; const date = value?._seconds ? new Date(value._seconds * 1000) : new Date(value); return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString(); };
 const formatBytes = (value) => { const bytes = Number(value || 0); if (bytes < 1024) return `${bytes} B`; if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`; return `${(bytes / (1024 * 1024)).toFixed(1)} MB`; };
 const statusLabel = (status) => String(status || "PENDING_REVIEW").replaceAll("_", " ");
-const STABLE_FORGE_TEST_ORIGIN = "https://prompt-studio-ai-git-forge-apk-forge-promptstudioai.vercel.app";
+const STABLE_FORGE_TEST_ORIGIN = "https://prompt-studio-ai-git-forge-apk-forge-prompt-studioai.vercel.app";
 
 function BuildCard({ build, api, onUpdate }) {
   const [busy, setBusy] = useState(false);
