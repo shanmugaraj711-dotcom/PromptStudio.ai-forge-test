@@ -1,11 +1,13 @@
 import { adminDb, json } from "./_firebaseAdmin.js";
 import { requireFounderAdmin } from "./_adminSecurity.js";
 import { dispatchForgeBuild } from "./_forgeGitHub.js";
+import { getRuntimeProductConfig } from "./_productConfig.js";
 
 const ACTIVE = new Set(["PENDING_REVIEW"]);
 const REFUND_STATES = new Set(["NOT_REQUIRED", "PENDING"]);
 const now = () => new Date();
 const requestRef = (db, id) => db.collection("apkForgeRequests").doc(id);
+const slotDate = () => now().toISOString().slice(0, 10);
 const fail = (status, code, message) => { const error = new Error(message); error.status = status; error.code = code; throw error; };
 const buildIdFor = (id) => `forge_${String(id || "").replace(/[^A-Za-z0-9_-]/g, "-")}_${Date.now().toString(36)}`;
 
@@ -40,15 +42,26 @@ export default async function handler(req, res) {
       return json(res, 200, { ok: true, forgeRequestId, ...result });
     }
 
+    const config = await getRuntimeProductConfig(db);
+    const forgeConfig = config.pricing?.apkForge || {};
+    const dailyLimit = Math.max(1, Number(forgeConfig.dailyBuildLimit || 5));
+    const buildDate = slotDate();
+    const slotRef = db.collection("apkForgeBuildSlots").doc(buildDate);
     const buildId = buildIdFor(forgeRequestId);
     const approved = await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists) fail(404, "forge_request_not_found", "Forge request was not found.");
       const request = snap.data() || {};
       if (!ACTIVE.has(request.status)) fail(409, "forge_review_conflict", `Forge request is already ${request.status}.`);
-      if (request.buildId || request.buildDispatchStatus === "DISPATCHED") fail(409, "forge_build_already_started", "This Forge request already has a build reservation.");
+      if (request.buildId && request.buildDispatchStatus !== "FAILED") fail(409, "forge_build_already_started", "This Forge request already has a build reservation.");
+      const slotSnap = await tx.get(slotRef);
+      const slot = slotSnap.exists ? (slotSnap.data() || {}) : {};
+      const reserved = Number(slot.reservedCount || 0);
+      if (reserved >= dailyLimit) fail(429, "forge_daily_build_limit", `The Forge daily build limit of ${dailyLimit} has been reached. Try again tomorrow.`);
       const ts = now();
-      tx.update(ref, { status: "BUILDING", buildId, buildDispatchStatus: "DISPATCH_PENDING", buildStartedAt: ts, reviewedAt: ts, reviewedBy: actor.uid, updatedAt: ts });
+      if (slotSnap.exists) tx.update(slotRef, { reservedCount: reserved + 1, updatedAt: ts });
+      else tx.set(slotRef, { date: buildDate, reservedCount: 1, dailyLimit, createdAt: ts, updatedAt: ts });
+      tx.update(ref, { status: "BUILDING", buildId, buildDate, buildSlotReserved: true, buildDispatchStatus: "DISPATCH_PENDING", buildStartedAt: ts, reviewedAt: ts, reviewedBy: actor.uid, updatedAt: ts });
       return { ...request, buildId };
     });
 
@@ -59,10 +72,13 @@ export default async function handler(req, res) {
     } catch (error) {
       await db.runTransaction(async (tx) => {
         const snap = await tx.get(ref);
+        const slotSnap = await tx.get(slotRef);
         if (!snap.exists) return;
         const current = snap.data() || {};
         if (current.status !== "BUILDING" || current.buildId !== buildId) return;
-        tx.update(ref, { status: "APPROVED", buildDispatchStatus: "FAILED", buildDispatchError: String(error?.message || "Build dispatch failed.").slice(0, 500), buildDispatchFailedAt: now(), updatedAt: now() });
+        const slot = slotSnap.exists ? (slotSnap.data() || {}) : {};
+        tx.update(ref, { status: "APPROVED", buildDispatchStatus: "FAILED", buildDispatchError: String(error?.message || "Build dispatch failed.").slice(0, 500), buildDispatchFailedAt: now(), buildSlotReserved: false, updatedAt: now() });
+        if (slotSnap.exists) tx.update(slotRef, { reservedCount: Math.max(0, Number(slot.reservedCount || 0) - 1), updatedAt: now() });
       });
       throw error;
     }
