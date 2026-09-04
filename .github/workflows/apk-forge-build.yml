@@ -1,8 +1,13 @@
 name: APK Forge Build
 
-run-name: APK Forge · ${{ github.event.client_payload.forgeRequestId || github.event.inputs.forge_request_id || 'manual-test' }}
+run-name: APK Forge · ${{ github.event.client_payload.forgeRequestId || github.event.inputs.forge_request_id || github.event.head_commit.message || 'manual-test' }}
 
 on:
+  push:
+    branches:
+      - forge/apk-forge
+    paths:
+      - 'apk-forge/requests/**'
   workflow_dispatch:
     inputs:
       forge_request_id:
@@ -38,20 +43,18 @@ on:
         required: true
         type: string
         default: '1'
-  repository_dispatch:
-    types: [apk_forge_build]
 
 permissions:
   contents: read
 
 env:
-  FORGE_REQUEST_ID: ${{ github.event.client_payload.forgeRequestId || github.event.inputs.forge_request_id || 'manual-test' }}
-  FORGE_BUILD_ID: ${{ github.event.client_payload.buildId || github.event.inputs.build_id || github.run_id }}
-  FORGE_APP_NAME: ${{ github.event.client_payload.appName || github.event.inputs.app_name || 'PromptStudio AI' }}
-  FORGE_WEB_ORIGIN: ${{ github.event.client_payload.forgeWebOrigin || github.event.inputs.forge_web_origin || 'https://forge.invalid' }}
-  FORGE_PACKAGE_ID: ${{ github.event.client_payload.packageId || github.event.inputs.package_id || 'in.promptstudio.ai' }}
-  FORGE_VERSION_NAME: ${{ github.event.client_payload.versionName || github.event.inputs.version_name || '0.1.0' }}
-  FORGE_VERSION_CODE: ${{ github.event.client_payload.versionCode || github.event.inputs.version_code || '1' }}
+  FORGE_REQUEST_ID: ${{ github.event.client_payload.forgeRequestId || github.event.inputs.forge_request_id || '' }}
+  FORGE_BUILD_ID: ${{ github.event.client_payload.buildId || github.event.inputs.build_id || '' }}
+  FORGE_APP_NAME: ${{ github.event.client_payload.appName || github.event.inputs.app_name || '' }}
+  FORGE_WEB_ORIGIN: ${{ github.event.client_payload.forgeWebOrigin || github.event.inputs.forge_web_origin || '' }}
+  FORGE_PACKAGE_ID: ${{ github.event.client_payload.packageId || github.event.inputs.package_id || '' }}
+  FORGE_VERSION_NAME: ${{ github.event.client_payload.versionName || github.event.inputs.version_name || '' }}
+  FORGE_VERSION_CODE: ${{ github.event.client_payload.versionCode || github.event.inputs.version_code || '' }}
 
 jobs:
   build-apk:
@@ -64,6 +67,46 @@ jobs:
     steps:
       - name: Checkout Forge branch
         uses: actions/checkout@v4
+
+      - name: Load branch-local Forge request
+        if: github.event_name == 'push'
+        working-directory: .
+        run: |
+          set -euo pipefail
+          marker_path="$(git log -1 --pretty=%B | sed -n 's/^forge: queue //p' | head -n 1)"
+          case "$marker_path" in
+            apk-forge/requests/*.json) ;;
+            *) echo "Invalid Forge queue marker path: $marker_path" >&2; exit 1 ;;
+          esac
+          test -f "$marker_path"
+          python - "$marker_path" <<'PY'
+          import json
+          import os
+          import sys
+
+          path = sys.argv[1]
+          with open(path, "r", encoding="utf-8") as handle:
+              data = json.load(handle)
+
+          required = {
+              "forgeRequestId": "FORGE_REQUEST_ID",
+              "buildId": "FORGE_BUILD_ID",
+              "appName": "FORGE_APP_NAME",
+              "forgeWebOrigin": "FORGE_WEB_ORIGIN",
+              "packageId": "FORGE_PACKAGE_ID",
+              "versionName": "FORGE_VERSION_NAME",
+              "versionCode": "FORGE_VERSION_CODE",
+          }
+          env_path = os.environ["GITHUB_ENV"]
+          with open(env_path, "a", encoding="utf-8") as env:
+              for source, target in required.items():
+                  value = str(data.get(source, "")).strip()
+                  if not value:
+                      raise SystemExit(f"Missing Forge marker field: {source}")
+                  if "\n" in value or "\r" in value:
+                      raise SystemExit(f"Forge marker field contains a newline: {source}")
+                  env.write(f"{target}={value}\n")
+          PY
 
       - name: Validate Forge configuration
         run: |
