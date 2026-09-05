@@ -3,8 +3,38 @@ import { getAdminApp } from "./_firebaseAdmin.js";
 import { inflateRawSync } from "node:zlib";
 
 const PROJECT_ID = "promptstudio-ai-d31b8";
-const bucketName = () => String(process.env.FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_ADMIN_STORAGE_BUCKET || `${PROJECT_ID}.firebasestorage.app`).trim();
-const storageBucket = () => getStorage(getAdminApp()).bucket(bucketName());
+const configuredBucket = () => String(process.env.FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_ADMIN_STORAGE_BUCKET || "").trim();
+const bucketCandidates = () => [...new Set([
+  configuredBucket(),
+  `${PROJECT_ID}.firebasestorage.app`,
+  `${PROJECT_ID}.appspot.com`,
+].filter(Boolean))];
+
+let resolvedBucketName = null;
+const storageBucket = async () => {
+  const app = getAdminApp();
+  const storage = getStorage(app);
+  const candidates = resolvedBucketName ? [resolvedBucketName, ...bucketCandidates().filter((name) => name !== resolvedBucketName)] : bucketCandidates();
+
+  for (const name of candidates) {
+    try {
+      const bucket = storage.bucket(name);
+      const [exists] = await bucket.exists();
+      if (exists) {
+        resolvedBucketName = name;
+        return bucket;
+      }
+    } catch (error) {
+      console.warn("Forge storage bucket probe failed", { bucket: name, code: error?.code || "unknown" });
+    }
+  }
+
+  const error = new Error(`No configured Firebase Storage bucket exists. Tried: ${candidates.join(", ")}`);
+  error.status = 503;
+  error.code = "forge_storage_bucket_missing";
+  throw error;
+};
+
 const fail = (status, code, message) => { const error = new Error(message); error.status = status; error.code = code; throw error; };
 
 const readU16 = (buffer, offset) => buffer.readUInt16LE(offset);
@@ -66,7 +96,8 @@ export const forgeApkStoragePath = (uid, forgeRequestId) => `forge-apks/${encode
 
 export const storeForgeApk = async ({ uid, forgeRequestId, artifactId }) => {
   const path = forgeApkStoragePath(uid, forgeRequestId);
-  const file = storageBucket().file(path);
+  const bucket = await storageBucket();
+  const file = bucket.file(path);
   const [exists] = await file.exists();
   if (!exists) {
     const apk = await downloadForgeArtifactApk(artifactId);
@@ -76,7 +107,8 @@ export const storeForgeApk = async ({ uid, forgeRequestId, artifactId }) => {
 };
 
 export const signedForgeApkUrl = async (storagePath, forgeRequestId) => {
-  const file = storageBucket().file(storagePath);
+  const bucket = await storageBucket();
+  const file = bucket.file(storagePath);
   const [exists] = await file.exists();
   if (!exists) fail(404, "forge_apk_not_found", "The APK is not available yet.");
   const [url] = await file.getSignedUrl({ version: "v4", action: "read", expires: Date.now() + 10 * 60 * 1000, responseDisposition: `attachment; filename="promptstudio-forge-${String(forgeRequestId).replace(/[^A-Za-z0-9._-]/g, "-")}.apk"`, responseType: "application/vnd.android.package-archive" });
