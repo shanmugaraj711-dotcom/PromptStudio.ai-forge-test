@@ -1,42 +1,6 @@
-import { getStorage } from "firebase-admin/storage";
-import { getAdminApp } from "./_firebaseAdmin.js";
 import { inflateRawSync } from "node:zlib";
 
-const PROJECT_ID = "promptstudio-ai-d31b8";
-const configuredBucket = () => String(process.env.FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_ADMIN_STORAGE_BUCKET || "").trim();
-const bucketCandidates = () => [...new Set([
-  configuredBucket(),
-  `${PROJECT_ID}.firebasestorage.app`,
-  `${PROJECT_ID}.appspot.com`,
-].filter(Boolean))];
-
-let resolvedBucketName = null;
-const storageBucket = async () => {
-  const app = getAdminApp();
-  const storage = getStorage(app);
-  const candidates = resolvedBucketName ? [resolvedBucketName, ...bucketCandidates().filter((name) => name !== resolvedBucketName)] : bucketCandidates();
-
-  for (const name of candidates) {
-    try {
-      const bucket = storage.bucket(name);
-      const [exists] = await bucket.exists();
-      if (exists) {
-        resolvedBucketName = name;
-        return bucket;
-      }
-    } catch (error) {
-      console.warn("Forge storage bucket probe failed", { bucket: name, code: error?.code || "unknown" });
-    }
-  }
-
-  const error = new Error(`No configured Firebase Storage bucket exists. Tried: ${candidates.join(", ")}`);
-  error.status = 503;
-  error.code = "forge_storage_bucket_missing";
-  throw error;
-};
-
 const fail = (status, code, message) => { const error = new Error(message); error.status = status; error.code = code; throw error; };
-
 const readU16 = (buffer, offset) => buffer.readUInt16LE(offset);
 const readU32 = (buffer, offset) => buffer.readUInt32LE(offset);
 
@@ -82,35 +46,14 @@ const extractApkFromArtifactZip = (buffer) => {
 };
 
 export const downloadForgeArtifactApk = async (artifactId) => {
-  const token = String(process.env.FORGE_GITHUB_TOKEN || "").trim();
-  if (!token) fail(503, "forge_github_not_configured", "GitHub Forge automation is not configured.");
+  // Customer-facing downloads must use a dedicated least-privilege token.
+  // Keep the build/marker token separate because it needs repository write access.
+  const token = String(process.env.FORGE_GITHUB_ARTIFACT_TOKEN || "").trim();
+  if (!token) fail(503, "forge_artifact_token_not_configured", "Forge APK delivery is not configured yet. A dedicated GitHub Actions read-only token is required.");
   const response = await fetch(`https://api.github.com/repos/shanmugaraj711-dotcom/PromptStudio.ai/actions/artifacts/${encodeURIComponent(artifactId)}/zip`, {
     headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
     redirect: "follow",
   });
   if (!response.ok) fail(response.status >= 500 ? 502 : response.status, "forge_artifact_download_failed", `Unable to download the Forge artifact (${response.status}).`);
   return extractApkFromArtifactZip(Buffer.from(await response.arrayBuffer()));
-};
-
-export const forgeApkStoragePath = (uid, forgeRequestId) => `forge-apks/${encodeURIComponent(String(uid))}/${encodeURIComponent(String(forgeRequestId))}.apk`;
-
-export const storeForgeApk = async ({ uid, forgeRequestId, artifactId }) => {
-  const path = forgeApkStoragePath(uid, forgeRequestId);
-  const bucket = await storageBucket();
-  const file = bucket.file(path);
-  const [exists] = await file.exists();
-  if (!exists) {
-    const apk = await downloadForgeArtifactApk(artifactId);
-    await file.save(apk, { resumable: false, metadata: { contentType: "application/vnd.android.package-archive", cacheControl: "private, max-age=0, no-store", metadata: { forgeRequestId: String(forgeRequestId), uid: String(uid), sourceArtifactId: String(artifactId) } } });
-  }
-  return path;
-};
-
-export const signedForgeApkUrl = async (storagePath, forgeRequestId) => {
-  const bucket = await storageBucket();
-  const file = bucket.file(storagePath);
-  const [exists] = await file.exists();
-  if (!exists) fail(404, "forge_apk_not_found", "The APK is not available yet.");
-  const [url] = await file.getSignedUrl({ version: "v4", action: "read", expires: Date.now() + 10 * 60 * 1000, responseDisposition: `attachment; filename="promptstudio-forge-${String(forgeRequestId).replace(/[^A-Za-z0-9._-]/g, "-")}.apk"`, responseType: "application/vnd.android.package-archive" });
-  return url;
 };
