@@ -32,7 +32,22 @@ export default function ApkForgeBuilds() {
       const response = await fetch("/api/apk-forge-history", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || "Unable to load your Forge builds.");
-      setBuilds(Array.isArray(data.builds) ? data.builds : []);
+      let nextBuilds = Array.isArray(data.builds) ? data.builds : [];
+      setBuilds(nextBuilds);
+
+      const active = nextBuilds.filter((build) => ["BUILDING", "VERIFYING"].includes(build.status) && build.buildId);
+      if (active.length) {
+        const updates = await Promise.all(active.slice(0, 10).map(async (build) => {
+          try {
+            const statusResponse = await fetch(`/api/apk-forge-build-status?forgeRequestId=${encodeURIComponent(build.forgeRequestId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+            const status = await statusResponse.json().catch(() => ({}));
+            return statusResponse.ok ? { id: build.forgeRequestId, status: status.status, apkReady: Boolean(status.apkReady) } : null;
+          } catch { return null; }
+        }));
+        const byId = new Map(updates.filter(Boolean).map((item) => [item.id, item]));
+        nextBuilds = nextBuilds.map((build) => byId.has(build.forgeRequestId) ? { ...build, ...byId.get(build.forgeRequestId) } : build);
+        setBuilds(nextBuilds);
+      }
     } catch (cause) {
       console.error("Unable to load Forge builds", cause);
       setError(cause.message || "Unable to load your Forge builds.");
