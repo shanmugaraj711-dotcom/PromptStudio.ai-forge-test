@@ -1,6 +1,7 @@
 import { adminDb, json, requireUser } from "./_firebaseAdmin.js";
 import { requireFounderAdmin } from "./_adminSecurity.js";
 import { listForgeArtifacts, listForgeBuildRuns } from "./_forgeGitHub.js";
+import { storeForgeApk } from "./_forgeStorage.js";
 
 const serializeDate = (value) => value?.toDate?.()?.toISOString?.() || value || null;
 const requestRef = (db, id) => db.collection("apkForgeRequests").doc(id);
@@ -36,8 +37,6 @@ const reconcile = async (db, ref, request) => {
     return { ...request, status: "BUILD_FAILED", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null };
   }
 
-  // A successful GitHub run means BUILDING is complete. Explicitly enter VERIFYING
-  // before accepting the artifact as READY so Firestore never skips the verification state.
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) return;
@@ -57,6 +56,11 @@ const reconcile = async (db, ref, request) => {
   const artifacts = await listForgeArtifacts(run.id);
   const artifact = artifacts.find((item) => item?.name === `promptstudio-forge-${request.buildId}` && !item.expired);
   if (!artifact) fail(502, "forge_artifact_missing", "The Forge build completed but its APK artifact was not found.");
+  if (!request.uid) fail(500, "forge_owner_missing", "The Forge request has no owner and cannot be delivered safely.");
+
+  // Delivery is prepared before READY is written. This keeps READY meaningful:
+  // a customer only sees Download APK after the verified APK is in private storage.
+  const apkStoragePath = await storeForgeApk({ uid: request.uid, forgeRequestId: ref.id, artifactId: artifact.id });
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
@@ -73,6 +77,8 @@ const reconcile = async (db, ref, request) => {
       artifactName: artifact.name,
       artifactSize: artifact.size_in_bytes || null,
       artifactExpired: Boolean(artifact.expired),
+      apkStoragePath,
+      apkStoredAt: new Date(),
       buildFinishedAt: current.buildFinishedAt || new Date(),
       verifiedAt: new Date(),
       updatedAt: new Date(),
@@ -90,6 +96,7 @@ const reconcile = async (db, ref, request) => {
     artifactName: artifact.name,
     artifactSize: artifact.size_in_bytes || null,
     artifactExpired: Boolean(artifact.expired),
+    apkStoragePath,
   };
 };
 
@@ -106,7 +113,7 @@ export default async function handler(req, res) {
     const request = snap.data() || {};
     if (String(request.uid || "") !== decoded.uid) await requireFounderAdmin(req, { write: false });
     const current = await reconcile(db, ref, request);
-    return json(res, 200, { ok: true, forgeRequestId: id, status: current.status, buildId: current.buildId || null, githubRunId: current.githubRunId || null, githubRunStatus: current.githubRunStatus || null, githubRunConclusion: current.githubRunConclusion || null, githubRunUrl: current.githubRunUrl || null, artifactId: current.artifactId || null, artifactName: current.artifactName || null, artifactSize: current.artifactSize || null, createdAt: serializeDate(current.createdAt), paidAt: serializeDate(current.paidAt), buildStartedAt: serializeDate(current.buildStartedAt), buildFinishedAt: serializeDate(current.buildFinishedAt), verifiedAt: serializeDate(current.verifiedAt) });
+    return json(res, 200, { ok: true, forgeRequestId: id, status: current.status, buildId: current.buildId || null, githubRunId: current.githubRunId || null, githubRunStatus: current.githubRunStatus || null, githubRunConclusion: current.githubRunConclusion || null, githubRunUrl: current.githubRunUrl || null, artifactId: current.artifactId || null, artifactName: current.artifactName || null, artifactSize: current.artifactSize || null, createdAt: serializeDate(current.createdAt), paidAt: serializeDate(current.paidAt), buildStartedAt: serializeDate(current.buildStartedAt), buildFinishedAt: serializeDate(current.buildFinishedAt), verifiedAt: serializeDate(current.verifiedAt), apkReady: current.status === "READY" && Boolean(current.apkStoragePath) });
   } catch (error) {
     console.error("APK Forge build status failed", { code: error?.code || "unknown", status: error?.status });
     return json(res, error.status || 500, { code: error.code || "apk_forge_build_status_failed", message: error.message || "Forge build status failed." });
