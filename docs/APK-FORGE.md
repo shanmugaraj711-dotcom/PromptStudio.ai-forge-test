@@ -121,6 +121,18 @@ A scheduled server-side job is required to process paid requests that remain `PE
 7. **Build handoff** — hand the generated project/configuration to an isolated Android build runner. The build runner must be separate from the production web runtime.
 8. **Verification** — run compile/unit/UI checks, inspect APK metadata, verify checksum, and report build/test results before customer delivery.
 
+## APK delivery (current test path)
+
+For the current test/early-customer phase, Forge does **not** require Firebase Storage. A READY request stores the verified GitHub Actions artifact ID, and the authenticated `/api/apk-forge-download` endpoint verifies Firestore ownership before the server downloads the artifact, extracts the APK, and streams the APK bytes directly to the customer. GitHub artifact URLs and GitHub tokens are never sent to the browser.
+
+The customer-facing download path must use a dedicated GitHub credential named `FORGE_GITHUB_ARTIFACT_TOKEN` with the minimum repository permission required to read Actions artifacts. The build/marker credential remains separate and is not used by the customer download endpoint.
+
+### Known limitation — temporary artifact storage
+
+GitHub Actions artifacts are temporary and expire according to the repository/workflow retention policy (currently expected to be about 90 days unless configured otherwise). Therefore this proxy approach is intentionally a **testing/early-customer delivery path, not permanent APK storage**. Before Forge scales, replace it with durable private object storage and retain the same ownership/authentication boundary.
+
+This limitation is deliberately recorded here so it is not forgotten during future Forge productionization.
+
 ## Safety boundaries
 
 - Never execute customer-uploaded EXE/binary files.
@@ -135,7 +147,7 @@ A scheduled server-side job is required to process paid requests that remain `PE
 
 ## Current branch scope
 
-The generic Android wrapper, isolated debug build pipeline, server-priced payment order flow, payment verification, webhook promotion, and hourly Razorpay reconciliation path are implemented on `forge/apk-forge`. Payment/review integration must preserve the state and refund contracts above before any live customer build button is enabled. No production deployment or merge is performed automatically.
+The generic Android wrapper, isolated debug build pipeline, server-priced payment order flow, payment verification, webhook promotion, hourly Razorpay reconciliation path, customer Forge history, and authenticated artifact-proxy delivery path are implemented on `forge/apk-forge`. Payment/review integration must preserve the state and refund contracts above before any live customer build button is enabled. No production deployment or merge is performed automatically.
 
 <!--
 Reference notes for the external Razorpay documentation used when this contract was designed:
