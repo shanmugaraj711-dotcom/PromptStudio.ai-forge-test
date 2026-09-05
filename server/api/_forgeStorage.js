@@ -1,0 +1,84 @@
+import { getStorage } from "firebase-admin/storage";
+import { getAdminApp } from "./_firebaseAdmin.js";
+import { inflateRawSync } from "node:zlib";
+
+const PROJECT_ID = "promptstudio-ai-d31b8";
+const bucketName = () => String(process.env.FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_ADMIN_STORAGE_BUCKET || `${PROJECT_ID}.firebasestorage.app`).trim();
+const storageBucket = () => getStorage(getAdminApp()).bucket(bucketName());
+const fail = (status, code, message) => { const error = new Error(message); error.status = status; error.code = code; throw error; };
+
+const readU16 = (buffer, offset) => buffer.readUInt16LE(offset);
+const readU32 = (buffer, offset) => buffer.readUInt32LE(offset);
+
+const extractApkFromArtifactZip = (buffer) => {
+  const eocdSignature = 0x06054b50;
+  const centralSignature = 0x02014b50;
+  const localSignature = 0x04034b50;
+  let eocd = -1;
+  for (let offset = Math.max(0, buffer.length - 0x10000 - 22); offset <= buffer.length - 22; offset += 1) {
+    if (readU32(buffer, offset) === eocdSignature) { eocd = offset; break; }
+  }
+  if (eocd < 0) fail(502, "forge_artifact_invalid", "The Forge artifact is not a valid ZIP archive.");
+  const entryCount = readU16(buffer, eocd + 10);
+  const centralSize = readU32(buffer, eocd + 12);
+  const centralOffset = readU32(buffer, eocd + 16);
+  if (!entryCount || centralOffset + centralSize > buffer.length) fail(502, "forge_artifact_invalid", "The Forge artifact ZIP directory is invalid.");
+
+  let cursor = centralOffset;
+  for (let index = 0; index < entryCount; index += 1) {
+    if (readU32(buffer, cursor) !== centralSignature) fail(502, "forge_artifact_invalid", "The Forge artifact ZIP entry is invalid.");
+    const method = readU16(buffer, cursor + 10);
+    const compressedSize = readU32(buffer, cursor + 20);
+    const uncompressedSize = readU32(buffer, cursor + 24);
+    const nameLength = readU16(buffer, cursor + 28);
+    const extraLength = readU16(buffer, cursor + 30);
+    const commentLength = readU16(buffer, cursor + 32);
+    const localOffset = readU32(buffer, cursor + 42);
+    const name = buffer.subarray(cursor + 46, cursor + 46 + nameLength).toString("utf8");
+    cursor += 46 + nameLength + extraLength + commentLength;
+    if (!/\.apk$/i.test(name)) continue;
+    if (readU32(buffer, localOffset) !== localSignature) fail(502, "forge_artifact_invalid", "The Forge APK entry is invalid.");
+    const localNameLength = readU16(buffer, localOffset + 26);
+    const localExtraLength = readU16(buffer, localOffset + 28);
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+    const dataEnd = dataStart + compressedSize;
+    if (dataEnd > buffer.length) fail(502, "forge_artifact_invalid", "The Forge APK payload is truncated.");
+    const compressed = buffer.subarray(dataStart, dataEnd);
+    const apk = method === 0 ? compressed : method === 8 ? inflateRawSync(compressed) : null;
+    if (!apk || apk.length !== uncompressedSize) fail(502, "forge_artifact_invalid", "The Forge APK compression format is unsupported or corrupt.");
+    return apk;
+  }
+  fail(502, "forge_apk_missing", "The Forge artifact did not contain an APK.");
+};
+
+export const downloadForgeArtifactApk = async (artifactId) => {
+  const token = String(process.env.FORGE_GITHUB_TOKEN || "").trim();
+  if (!token) fail(503, "forge_github_not_configured", "GitHub Forge automation is not configured.");
+  const response = await fetch(`https://api.github.com/repos/shanmugaraj711-dotcom/PromptStudio.ai/actions/artifacts/${encodeURIComponent(artifactId)}/zip`, {
+    headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
+    redirect: "follow",
+  });
+  if (!response.ok) fail(response.status >= 500 ? 502 : response.status, "forge_artifact_download_failed", `Unable to download the Forge artifact (${response.status}).`);
+  return extractApkFromArtifactZip(Buffer.from(await response.arrayBuffer()));
+};
+
+export const forgeApkStoragePath = (uid, forgeRequestId) => `forge-apks/${encodeURIComponent(String(uid))}/${encodeURIComponent(String(forgeRequestId))}.apk`;
+
+export const storeForgeApk = async ({ uid, forgeRequestId, artifactId }) => {
+  const path = forgeApkStoragePath(uid, forgeRequestId);
+  const file = storageBucket().file(path);
+  const [exists] = await file.exists();
+  if (!exists) {
+    const apk = await downloadForgeArtifactApk(artifactId);
+    await file.save(apk, { resumable: false, metadata: { contentType: "application/vnd.android.package-archive", cacheControl: "private, max-age=0, no-store", metadata: { forgeRequestId: String(forgeRequestId), uid: String(uid), sourceArtifactId: String(artifactId) } } });
+  }
+  return path;
+};
+
+export const signedForgeApkUrl = async (storagePath, forgeRequestId) => {
+  const file = storageBucket().file(storagePath);
+  const [exists] = await file.exists();
+  if (!exists) fail(404, "forge_apk_not_found", "The APK is not available yet.");
+  const [url] = await file.getSignedUrl({ version: "v4", action: "read", expires: Date.now() + 10 * 60 * 1000, responseDisposition: `attachment; filename="promptstudio-forge-${String(forgeRequestId).replace(/[^A-Za-z0-9._-]/g, "-")}.apk"`, responseType: "application/vnd.android.package-archive" });
+  return url;
+};
