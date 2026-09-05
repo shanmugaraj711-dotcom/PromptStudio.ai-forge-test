@@ -15,7 +15,7 @@ const view = (doc) => {
     buildFinishedAt: serializeDate(data.buildFinishedAt),
     verifiedAt: serializeDate(data.verifiedAt),
     buildId: data.buildId || null,
-    apkReady: data.status === "READY" && Boolean(data.apkStoragePath),
+    apkReady: data.status === "READY" && Boolean(data.apkStoragePath || data.artifactId),
   };
 };
 
