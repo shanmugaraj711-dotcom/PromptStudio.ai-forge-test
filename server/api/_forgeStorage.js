@@ -46,8 +46,7 @@ const extractApkFromArtifactZip = (buffer) => {
 };
 
 export const downloadForgeArtifactApk = async (artifactId) => {
-  // Customer-facing downloads must use a dedicated least-privilege token.
-  // Keep the build/marker token separate because it needs repository write access.
+  // Customer-facing delivery intentionally uses a dedicated least-privilege token.
   const token = String(process.env.FORGE_GITHUB_ARTIFACT_TOKEN || "").trim();
   if (!token) fail(503, "forge_artifact_token_not_configured", "Forge APK delivery is not configured yet. A dedicated GitHub Actions read-only token is required.");
   const response = await fetch(`https://api.github.com/repos/shanmugaraj711-dotcom/PromptStudio.ai/actions/artifacts/${encodeURIComponent(artifactId)}/zip`, {
