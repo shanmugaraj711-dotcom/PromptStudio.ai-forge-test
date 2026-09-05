@@ -65,9 +65,20 @@ export default function ApkForgeBuilds() {
     try {
       const token = await user.getIdToken();
       const response = await fetch(`/api/apk-forge-download?forgeRequestId=${encodeURIComponent(forgeRequestId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.url) throw new Error(data.message || "Unable to prepare your APK download.");
-      window.location.assign(data.url);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Unable to download your APK.");
+      }
+      const blob = await response.blob();
+      if (!blob.size) throw new Error("The Forge server returned an empty APK.");
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `promptstudio-forge-${forgeRequestId.replace(/[^A-Za-z0-9._-]/g, "-")}.apk`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
     } catch (cause) {
       console.error("Forge APK download failed", cause);
       setError(cause.message || "Unable to download the APK.");
@@ -112,7 +123,7 @@ export default function ApkForgeBuilds() {
                     </div>
                     <div className="shrink-0">
                       {ready ? (
-                        <button type="button" onClick={() => download(build.forgeRequestId)} disabled={downloading === build.forgeRequestId} className="w-full rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{downloading === build.forgeRequestId ? "Preparing…" : "Download APK ↓"}</button>
+                        <button type="button" onClick={() => download(build.forgeRequestId)} disabled={downloading === build.forgeRequestId} className="w-full rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{downloading === build.forgeRequestId ? "Downloading…" : "Download APK ↓"}</button>
                       ) : (
                         <span className="inline-flex rounded-xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-500">{build.status === "BUILDING" || build.status === "VERIFYING" ? "Build in progress" : "Not ready yet"}</span>
                       )}
