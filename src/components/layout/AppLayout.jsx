@@ -8,6 +8,7 @@ const baseNavItems = [
   { to: "/dashboard", label: "⌂ Dashboard" },
   { to: "/builder", label: "🪄 Builder" },
   { to: "/history", label: "📜 History", feature: "promptHistory" },
+  { to: "/apk-forge/my-builds", label: "📦 My Builds" },
   { to: "/account", label: "⚙️ Account" },
   { to: "/transactions", label: "💳 Transactions" },
   { to: "/referral", label: "🎁 Refer & Earn" },
