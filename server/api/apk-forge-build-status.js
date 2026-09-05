@@ -1,7 +1,6 @@
 import { adminDb, json, requireUser } from "./_firebaseAdmin.js";
 import { requireFounderAdmin } from "./_adminSecurity.js";
 import { listForgeArtifacts, listForgeBuildRuns } from "./_forgeGitHub.js";
-import { storeForgeApk } from "./_forgeStorage.js";
 
 const serializeDate = (value) => value?.toDate?.()?.toISOString?.() || value || null;
 const requestRef = (db, id) => db.collection("apkForgeRequests").doc(id);
@@ -40,19 +39,16 @@ const reconcile = async (db, ref, request) => {
   const artifacts = await listForgeArtifacts(run.id);
   const artifact = artifacts.find((item) => item?.name === `promptstudio-forge-${request.buildId}` && !item.expired);
   if (!artifact) fail(502, "forge_artifact_missing", "The Forge build completed but its APK artifact was not found.");
-  if (!request.uid) fail(500, "forge_owner_missing", "The Forge request has no owner and cannot be delivered safely.");
-
-  const apkStoragePath = await storeForgeApk({ uid: request.uid, forgeRequestId: ref.id, artifactId: artifact.id });
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) return;
     const current = snap.data() || {};
     if (current.status !== "VERIFYING") return;
-    tx.update(ref, { status: "READY", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null, artifactId: artifact.id, artifactName: artifact.name, artifactSize: artifact.size_in_bytes || null, artifactExpired: Boolean(artifact.expired), apkStoragePath, apkStoredAt: new Date(), buildFinishedAt: current.buildFinishedAt || new Date(), verifiedAt: new Date(), updatedAt: new Date() });
+    tx.update(ref, { status: "READY", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null, artifactId: artifact.id, artifactName: artifact.name, artifactSize: artifact.size_in_bytes || null, artifactExpired: Boolean(artifact.expired), buildFinishedAt: current.buildFinishedAt || new Date(), verifiedAt: new Date(), updatedAt: new Date() });
   });
 
-  return { ...request, status: "READY", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null, artifactId: artifact.id, artifactName: artifact.name, artifactSize: artifact.size_in_bytes || null, artifactExpired: Boolean(artifact.expired), apkStoragePath };
+  return { ...request, status: "READY", githubRunId: run.id, githubRunStatus: run.status, githubRunConclusion: run.conclusion, githubRunUrl: run.html_url || null, artifactId: artifact.id, artifactName: artifact.name, artifactSize: artifact.size_in_bytes || null, artifactExpired: Boolean(artifact.expired) };
 };
 
 export default async function handler(req, res) {
@@ -70,7 +66,7 @@ export default async function handler(req, res) {
     if (!isOwner) await requireFounderAdmin(req, { write: false });
     const current = await reconcile(db, ref, request);
     const internalBuildDetails = isOwner ? {} : { githubRunId: current.githubRunId || null, githubRunStatus: current.githubRunStatus || null, githubRunConclusion: current.githubRunConclusion || null, githubRunUrl: current.githubRunUrl || null, artifactId: current.artifactId || null, artifactName: current.artifactName || null, artifactSize: current.artifactSize || null, artifactExpired: Boolean(current.artifactExpired) };
-    return json(res, 200, { ok: true, forgeRequestId: id, status: current.status, buildId: current.buildId || null, ...internalBuildDetails, createdAt: serializeDate(current.createdAt), paidAt: serializeDate(current.paidAt), buildStartedAt: serializeDate(current.buildStartedAt), buildFinishedAt: serializeDate(current.buildFinishedAt), verifiedAt: serializeDate(current.verifiedAt), apkReady: current.status === "READY" && Boolean(current.apkStoragePath) });
+    return json(res, 200, { ok: true, forgeRequestId: id, status: current.status, buildId: current.buildId || null, ...internalBuildDetails, createdAt: serializeDate(current.createdAt), paidAt: serializeDate(current.paidAt), buildStartedAt: serializeDate(current.buildStartedAt), buildFinishedAt: serializeDate(current.buildFinishedAt), verifiedAt: serializeDate(current.verifiedAt), apkReady: current.status === "READY" && Boolean(current.artifactId) && !current.artifactExpired });
   } catch (error) {
     console.error("APK Forge build status failed", { code: error?.code || "unknown", status: error?.status });
     return json(res, error.status || 500, { code: error.code || "apk_forge_build_status_failed", message: error.message || "Forge build status failed." });
