@@ -1,0 +1,29 @@
+{
+  "id": "/bubblewrap-test/",
+  "name": "PromptStudio AI",
+  "short_name": "PromptStudio",
+  "description": "PromptStudio AI — see it, get the prompt, create it.",
+  "start_url": "/bubblewrap-test/",
+  "scope": "/bubblewrap-test/",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
+  "orientation": "portrait",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/bubblewrap-test/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/bubblewrap-test/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
