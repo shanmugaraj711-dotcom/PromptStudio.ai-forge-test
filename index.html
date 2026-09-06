@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#4f46e5" />
+    <link rel="manifest" href="/bubblewrap-test/manifest.json" />
     <title>PromptStudio AI — SEE IT. GET THE PROMPT. CREATE IT.</title>
     <meta
       name="description"
@@ -50,6 +51,16 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      if (location.pathname === "/bubblewrap-test" || location.pathname === "/bubblewrap-test/") {
+        window.addEventListener("load", () => {
+          if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/bubblewrap-test/sw.js", { scope: "/bubblewrap-test/" })
+              .catch((error) => console.warn("Bubblewrap test service worker registration failed", error));
+          }
+        });
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
