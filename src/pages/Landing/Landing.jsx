@@ -4,12 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { createQuotaState } from "../../constants/quota";
 
 function AppIcon({ small = false }) {
-  return (
-    <span className={`relative grid shrink-0 place-items-center overflow-hidden rounded-xl bg-blue-600 shadow-lg shadow-blue-600/20 ${small ? "h-9 w-9" : "h-12 w-12"}`} aria-hidden="true">
-      <span className="absolute h-4 w-4 rotate-45 rounded-[4px] border-[2.5px] border-white" />
-      <span className="absolute h-2 w-2 rounded-[2px] bg-white" />
-    </span>
-  );
+  return <img src="/bubblewrap-test/icon.svg" alt="" className={`shrink-0 rounded-xl object-cover shadow-lg shadow-blue-600/20 ${small ? "h-9 w-9" : "h-12 w-12"}`} aria-hidden="true" />;
 }
 
 function ToolTile({ to, icon, title, detail }) {

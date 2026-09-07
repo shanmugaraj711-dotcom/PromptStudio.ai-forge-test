@@ -41,7 +41,7 @@ export default function AppLayout({ children }) {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-[0_8px_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl">
         <div className="mx-auto flex min-h-[4.5rem] max-w-7xl items-center gap-3 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <Link to="/dashboard" className="group flex shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-slate-50" aria-label="PromptStudio AI dashboard">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-base text-white shadow-md shadow-blue-600/20">⌂</span>
+            <img src="/bubblewrap-test/icon.svg" alt="" className="h-9 w-9 rounded-xl object-cover shadow-md shadow-blue-600/20" aria-hidden="true" />
             <div>
               <div className="text-lg font-black tracking-[-0.04em] text-slate-950 sm:text-2xl">PromptStudio <span className="text-blue-600 transition group-hover:text-blue-400">AI</span></div>
               <div className="mt-0.5 hidden text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 sm:block">Creative Intelligence</div>
