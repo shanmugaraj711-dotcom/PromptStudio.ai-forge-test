@@ -82,7 +82,7 @@ export const Account = () => {
   const photoURL = userProfile?.photoURL || user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=4F46E5&color=fff`;
 
   return (
-    <div className="min-h-[calc(100vh-4.75rem)] bg-gray-950 text-gray-100 px-4 py-10 sm:px-6 lg:px-8">
+    <div className="forge-screen px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-5xl space-y-7">
         <div className="text-center"><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-400">Account & billing</p><h1 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl">Current Plan</h1><p className="mt-2 text-sm text-gray-400">Manage your profile, usage and the options available to keep creating.</p></div>
         {error && <div className="rounded-xl border border-red-500/50 bg-red-950/80 p-4 text-sm text-red-200">⚠️ {error}</div>}

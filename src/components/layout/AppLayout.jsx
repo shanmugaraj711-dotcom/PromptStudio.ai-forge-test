@@ -37,7 +37,7 @@ export default function AppLayout({ children }) {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900">
+    <div className="forge-screen min-h-screen overflow-x-hidden">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-[0_8px_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl">
         <div className="mx-auto flex min-h-[4.5rem] max-w-7xl items-center gap-3 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <Link to="/dashboard" className="group flex shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-slate-50" aria-label="PromptStudio AI dashboard">

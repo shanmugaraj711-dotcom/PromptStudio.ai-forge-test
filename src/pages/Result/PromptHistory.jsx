@@ -80,7 +80,7 @@ export default function PromptHistory() {
   if (loading || templatesLoading) return <div className="min-h-screen flex items-center justify-center"><p>Loading your prompt library...</p></div>;
 
   return (
-    <div className="min-h-screen px-6 py-10">
+    <div className="forge-screen min-h-screen px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
