@@ -2,51 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#4f46e5" />
     <link rel="manifest" href="/bubblewrap-test/manifest.json" />
     <title>PromptStudio AI — SEE IT. GET THE PROMPT. CREATE IT.</title>
-    <meta
-      name="description"
-      content="See an idea or reference image. Get a clearer AI prompt. Create with the AI tool you choose. PromptStudio AI turns visual inspiration and rough ideas into usable prompts."
-    />
+    <meta name="description" content="See an idea or reference image. Get a clearer AI prompt. Create with the AI tool you choose. PromptStudio AI turns visual inspiration and rough ideas into usable prompts." />
     <meta name="robots" content="index,follow,max-image-preview:large" />
     <link rel="canonical" href="https://promptstudioai.in/" />
-
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="PromptStudio AI" />
     <meta property="og:title" content="PromptStudio AI — SEE IT. GET THE PROMPT. CREATE IT." />
-    <meta
-      property="og:description"
-      content="Turn reference images and rough ideas into clearer AI prompts. See it. Get the prompt. Create it."
-    />
+    <meta property="og:description" content="Turn reference images and rough ideas into clearer AI prompts. See it. Get the prompt. Create it." />
     <meta property="og:url" content="https://promptstudioai.in/" />
-
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="PromptStudio AI — SEE IT. GET THE PROMPT. CREATE IT." />
-    <meta
-      name="twitter:description"
-      content="Turn reference images and rough ideas into clearer AI prompts."
-    />
-
+    <meta name="twitter:description" content="Turn reference images and rough ideas into clearer AI prompts." />
     <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "PromptStudio AI",
-        "url": "https://promptstudioai.in/",
-        "applicationCategory": "MultimediaApplication",
-        "operatingSystem": "Web",
-        "description": "A prompt intelligence workspace that turns ideas and reference images into usable AI prompts.",
-        "slogan": "SEE IT. GET THE PROMPT. CREATE IT.",
-        "featureList": [
-          "Prompt intelligence",
-          "Reference image to AI prompt",
-          "Target-AI prompt generation",
-          "Prompt history",
-          "Saved favorites"
-        ]
-      }
+      {"@context":"https://schema.org","@type":"WebApplication","name":"PromptStudio AI","url":"https://promptstudioai.in/","applicationCategory":"MultimediaApplication","operatingSystem":"Web","description":"A prompt intelligence workspace that turns ideas and reference images into usable AI prompts.","slogan":"SEE IT. GET THE PROMPT. CREATE IT.","featureList":["Prompt intelligence","Reference image to AI prompt","Target-AI prompt generation","Prompt history","Saved favorites"]}
     </script>
   </head>
   <body>
@@ -55,8 +27,7 @@
       if (location.pathname === "/bubblewrap-test" || location.pathname === "/bubblewrap-test/") {
         window.addEventListener("load", () => {
           if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("/bubblewrap-test/sw.js", { scope: "/bubblewrap-test/" })
-              .catch((error) => console.warn("Bubblewrap test service worker registration failed", error));
+            navigator.serviceWorker.register("/bubblewrap-test/sw.js", { scope: "/bubblewrap-test/" }).catch((error) => console.warn("Bubblewrap test service worker registration failed", error));
           }
         });
       }
