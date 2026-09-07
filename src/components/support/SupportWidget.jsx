@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { auth } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
 
@@ -18,6 +18,7 @@ const loadSupport = async () => {
 };
 
 export default function SupportWidget() {
+  const { pathname } = useLocation();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -70,6 +71,8 @@ export default function SupportWidget() {
       setSending(false);
     }
   };
+
+  if (pathname === "/") return null;
 
   return (
     <>
